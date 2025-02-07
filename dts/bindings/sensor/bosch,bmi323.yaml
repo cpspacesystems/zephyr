@@ -3,7 +3,7 @@
 
 compatible: "bosch,bmi323"
 
-include: ["spi-device.yaml", "sensor-device.yaml"]
+include: sensor-device.yaml
 
 properties:
   int-gpios:
