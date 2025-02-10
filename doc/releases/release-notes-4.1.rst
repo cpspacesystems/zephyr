@@ -82,6 +82,8 @@ Removed APIs and options
 * The :kconfig:option:`CONFIG_PM_DEVICE_RUNTIME_EXCLUSIVE` option has been removed
   after being deprecated in favor of :kconfig:option:`CONFIG_PM_DEVICE_SYSTEM_MANAGED`.
 
+* The ``z_pm_save_idle_exit()`` PM API function has been removed.
+
 
 Deprecated APIs and options
 ===========================
@@ -132,6 +134,13 @@ New APIs and options
 
     * :c:member:`bt_mesh_health_cli::update` callback can be used to periodically update the message
       published by the Health Client.
+
+* Build system
+
+  * Sysbuild
+
+    * The newly introduced MCUboot swap using offset mode can be selected from sysbuild by using
+      ``SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET``, this mode is experimental.
 
 * Crypto
 

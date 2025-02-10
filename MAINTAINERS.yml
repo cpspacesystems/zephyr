@@ -4128,6 +4128,17 @@ STM32 Wireless Platforms:
     STM32WB SOCs, dts files and related drivers. STM32WB development boards
     and ST bluetooth shields.
 
+Enclustra Platforms:
+  status: maintained
+  maintainers:
+    - fkokosinski
+  collaborators:
+    - tgorochowik
+  files:
+    - boards/enclustra/
+  labels:
+    - "platform: Enclustra"
+
 Espressif Platforms:
   status: maintained
   maintainers:
@@ -5573,6 +5584,15 @@ Random:
     - include/zephyr/random/
   labels:
     - "area: Random"
+
+Peregrine Platforms:
+  status: maintained
+  maintainers:
+    - nandojve
+  files:
+    - boards/peregrine/
+  labels:
+    - "platform: Peregrine"
 
 # This area is to be converted to a subarea
 Testing with Renode:
