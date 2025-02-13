@@ -77,6 +77,9 @@ Removed APIs and options
   and only supported 8-bit depth to :c:func:`video_bits_per_pixel()` returning
   the *bit* count and supporting any color depth.
 
+* The ``video_stream_start()`` and ``video_stream_stop()`` driver APIs have been
+  replaced by ``video_set_stream()``.
+
 * :kconfig:option:`CONFIG_WIFI_NM_WPA_SUPPLICANT_CRYPTO`
 
 * The :kconfig:option:`CONFIG_PM_DEVICE_RUNTIME_EXCLUSIVE` option has been removed
@@ -130,6 +133,10 @@ New APIs and options
 
 * Bluetooth
 
+  * Host
+
+    * :c:func:`bt_conn_is_type`
+
   * Mesh
 
     * :c:member:`bt_mesh_health_cli::update` callback can be used to periodically update the message
@@ -160,6 +167,11 @@ New APIs and options
 
     * Image management :c:macro:`MGMT_EVT_OP_IMG_MGMT_DFU_CONFIRMED` now has image data field
       :c:struct:`img_mgmt_image_confirmed`.
+
+* Video
+
+  * :c:func:`video_set_stream()` driver API has replaced :c:func:`video_stream_start()` and
+    :c:func:`video_stream_stop()` driver APIs.
 
 * Other
 
@@ -267,8 +279,10 @@ New Boards
    * :zephyr:board:`nucleo_c071rb` (``nucleo_c071rb``)
    * :zephyr:board:`nucleo_f072rb` (``nucleo_f072rb``)
    * :zephyr:board:`nucleo_h7s3l8` (``nucleo_h7s3l8``)
+   * :zephyr:board:`nucleo_n657x0_q` (``nucleo_n657x0_q``)
    * :zephyr:board:`nucleo_wb07cc` (``nucleo_wb07cc``)
    * :zephyr:board:`stm32f413h_disco` (``stm32f413h_disco``)
+   * :zephyr:board:`stm32n6570_dk` (``stm32n6570_dk``)
 
 * Seeed Technology Co., Ltd
 

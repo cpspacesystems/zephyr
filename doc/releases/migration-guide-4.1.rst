@@ -94,6 +94,9 @@ STM32
   as it was introduced earlier.
   The Kconfig method for configuration is now removed.
 
+* ADC properties ``st,adc-sequencer`` and ``st,adc-clock-source`` now uses
+  string values instead of integer values.
+
 Modules
 *******
 
@@ -135,13 +138,16 @@ Device Drivers and Devicetree
   The :c:macro:`DEVICE_API()` macro should be used by out-of-tree driver implementations for
   all the upstream driver classes.
 
-* The :c:func:`video_buffer_alloc` and :c:func:`video_buffer_aligned_alloc` functions in the
-  video API now take an additional timeout parameter.
-
 ADC
 ===
 
 * Renamed the ``compatible`` from ``nxp,kinetis-adc12`` to :dtcompatible:`nxp,adc12`.
+
+Clock
+=====
+* Renamed the devicetree property ``freqs_mhz`` to ``freqs-mhz``.
+* Renamed the devicetree property ``cg_reg`` to ``cg-reg``.
+* Renamed the devicetree property ``pll_ctrl_reg`` to ``pll-ctrl-reg``.
 
 Counter
 =======
@@ -470,6 +476,13 @@ Video
   ``video_bits_per_pixel()`` which return a bit count. For instance, invocations such as
   ``pitch = width * video_pix_fmt_bpp(pixfmt)`` needs to be replaced by an equivalent
   ``pitch = width * video_bits_per_pixel(pixfmt) / BITS_PER_BYTE``.
+
+* The :c:func:`video_buffer_alloc` and :c:func:`video_buffer_aligned_alloc` functions in the
+  video API now take an additional timeout parameter.
+
+* The :c:func:`video_stream_start` and :c:func:`video_stream_stop` driver APIs are now merged
+  into the new :c:func:`video_set_stream` driver API. The user APIs are however unchanged to
+  keep backward compatibility with downstream applications.
 
 Watchdog
 ========
