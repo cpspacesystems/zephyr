@@ -872,19 +872,12 @@ void ull_scan_aux_setup(memq_link_t *link, struct node_rx_pdu *rx)
 		aux->rx_head = rx;
 	}
 
-	/* TODO: active_to_start feature port */
-	aux->ull.ticks_active_to_start = 0;
-	aux->ull.ticks_prepare_to_start =
-		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
-	aux->ull.ticks_preempt_to_start =
-		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_PREEMPT_MIN_US);
 	aux->ull.ticks_slot = HAL_TICKER_US_TO_TICKS_CEIL(
 		EVENT_OVERHEAD_START_US + ready_delay_us +
 		PDU_AC_MAX_US(PDU_AC_EXT_PAYLOAD_RX_SIZE, lll_aux->phy) +
 		EVENT_OVERHEAD_END_US);
 
-	ticks_slot_offset = MAX(aux->ull.ticks_active_to_start,
-				aux->ull.ticks_prepare_to_start);
+	ticks_slot_offset = HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
 	if (IS_ENABLED(CONFIG_BT_CTLR_LOW_LAT)) {
 		ticks_slot_overhead = ticks_slot_offset;
 	} else {
@@ -1126,6 +1119,10 @@ void ull_scan_aux_release(memq_link_t *link, struct node_rx_pdu *rx)
 	param_ull = HDR_LLL2ULL(rx->rx_ftr.param);
 
 	if (ull_scan_is_valid_get(param_ull)) {
+		/* Release aux context when LLL scheduled auxiliary PDU
+		 * reception is_abort on duration expire or aborted in the
+		 * unreserved time space.
+		 */
 		struct lll_scan *lll;
 
 		/* Mark for buffer for release */
@@ -1134,8 +1131,21 @@ void ull_scan_aux_release(memq_link_t *link, struct node_rx_pdu *rx)
 		lll = rx->rx_ftr.param;
 		lll_aux = rx->rx_ftr.lll_aux;
 
+		/* Under race condition when LLL scheduling a reception of
+		 * auxiliary PDU, a scan aux context may be assigned late and
+		 * the node rx releasing the aux context will not have it.
+		 * Release the scan aux context assigned in the scan context.
+		 */
+		if (!lll_aux) {
+			lll_aux = lll->lll_aux;
+		}
+
 	} else if (!IS_ENABLED(CONFIG_BT_CTLR_SYNC_PERIODIC) ||
 		   ull_scan_aux_is_valid_get(param_ull)) {
+		/* Release aux context when ULL scheduled auxiliary PDU
+		 * reception is aborted.
+		 */
+
 		/* Mark for buffer for release */
 		rx->hdr.type = NODE_RX_TYPE_RELEASE;
 
@@ -1150,8 +1160,20 @@ void ull_scan_aux_release(memq_link_t *link, struct node_rx_pdu *rx)
 		/* reset data len total */
 		sync->data_len = 0U;
 
+		/* Release aux context in case of chain PDU reception, otherwise
+		 * lll_aux is NULL.
+		 */
 		lll = rx->rx_ftr.param;
 		lll_aux = rx->rx_ftr.lll_aux;
+
+		/* Under race condition when LLL scheduling a reception of
+		 * auxiliary PDU, a scan aux context may be assigned late and
+		 * the node rx releasing the aux context will not have it.
+		 * Release the scan aux context assigned in the sync context.
+		 */
+		if (!lll_aux) {
+			lll_aux = lll->lll_aux;
+		}
 
 		/* Change node type so HCI can dispatch report for truncated
 		 * data properly.
@@ -1183,13 +1205,16 @@ void ull_scan_aux_release(memq_link_t *link, struct node_rx_pdu *rx)
 		scan = ull_scan_is_valid_get(scan);
 		if (scan) {
 			is_stop = scan->is_stop;
-		} else {
+		} else if (IS_ENABLED(CONFIG_BT_CTLR_SYNC_PERIODIC)) {
 			struct lll_sync *sync_lll;
 			struct ll_sync_set *sync;
 
 			sync_lll = (void *)lll;
 			sync = HDR_LLL2ULL(sync_lll);
 			is_stop = sync->is_stop;
+		} else {
+			LL_ASSERT(0);
+			return;
 		}
 
 		if (!is_stop) {
@@ -2023,6 +2048,10 @@ void ull_scan_aux_setup(memq_link_t *link, struct node_rx_pdu *rx)
 		uint32_t ticks_now;
 		uint32_t diff;
 
+#if defined(CONFIG_BT_TICKER_SLOT_AGNOSTIC)
+		/* CPU execution overhead to setup the radio for reception */
+		overhead_us = EVENT_OVERHEAD_START_US;
+#else /* !CONFIG_BT_TICKER_SLOT_AGNOSTIC */
 		/* CPU execution overhead to setup the radio for reception plus the
 		 * minimum prepare tick offset. And allow one additional event in
 		 * between as overhead (say, an advertising event in between got closed
@@ -2030,6 +2059,7 @@ void ull_scan_aux_setup(memq_link_t *link, struct node_rx_pdu *rx)
 		 */
 		overhead_us = (EVENT_OVERHEAD_END_US + EVENT_OVERHEAD_START_US +
 			       HAL_TICKER_TICKS_TO_US(HAL_TICKER_CNTR_CMP_OFFSET_MIN)) << 1;
+#endif /* !CONFIG_BT_TICKER_SLOT_AGNOSTIC */
 
 		ticks_now = ticker_ticks_now_get();
 		ticks_at_expire = ftr->ticks_anchor + ticks_aux_offset -
@@ -2728,19 +2758,12 @@ static void chain_start_ticker(struct ll_scan_aux_chain *chain, bool replace)
 
 	ready_delay_us = lll_radio_rx_ready_delay_get(chain->lll.phy, PHY_FLAGS_S8);
 
-	/* TODO: active_to_start feature port */
-	scan_aux_set.ull.ticks_active_to_start = 0;
-	scan_aux_set.ull.ticks_prepare_to_start =
-		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
-	scan_aux_set.ull.ticks_preempt_to_start =
-		HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_PREEMPT_MIN_US);
 	scan_aux_set.ull.ticks_slot = HAL_TICKER_US_TO_TICKS_CEIL(
 		EVENT_OVERHEAD_START_US + ready_delay_us +
 		PDU_AC_MAX_US(PDU_AC_EXT_PAYLOAD_RX_SIZE, chain->lll.phy) +
 		EVENT_OVERHEAD_END_US);
 
-	ticks_slot_offset = MAX(scan_aux_set.ull.ticks_active_to_start,
-				scan_aux_set.ull.ticks_prepare_to_start);
+	ticks_slot_offset = HAL_TICKER_US_TO_TICKS(EVENT_OVERHEAD_XTAL_US);
 	if (IS_ENABLED(CONFIG_BT_CTLR_LOW_LAT)) {
 		ticks_slot_overhead = ticks_slot_offset;
 	} else {

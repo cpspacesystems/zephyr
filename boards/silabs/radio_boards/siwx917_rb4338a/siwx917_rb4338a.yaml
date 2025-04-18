@@ -7,7 +7,6 @@ flash: 1024
 toolchain:
   - zephyr
   - gnuarmemb
-  - xtools
 supported:
   - bluetooth
   - dma
@@ -15,5 +14,7 @@ supported:
   - flash
   - gpio
   - i2c
+  - pwm
+  - watchdog
   - wifi
 vendor: silabs

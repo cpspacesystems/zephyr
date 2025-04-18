@@ -46,6 +46,7 @@
 	aliases {
 		led0 = &led1;
 		sw0 = &button0;
+		watchdog0 = &wdt;
 	};
 };
 
@@ -57,6 +58,19 @@
 	clocks = <&hoco>;
 	div = <2>;
 	mul = <20 0>;
+	status = "okay";
+};
+
+&pll2 {
+	clocks = <&hoco>;
+	div = <2>;
+	mul = <24 0>;
+	status = "okay";
+};
+
+&uclk {
+	clocks = <&pll2>;
+	div = <5>;
 	status = "okay";
 };
 
@@ -109,4 +123,24 @@
 			reg = <0X0 DT_SIZE_K(8)>;
 		};
 	};
+};
+
+&usbfs {
+	pinctrl-0 = <&usbfs_default>;
+	pinctrl-names = "default";
+	maximum-speed = "full-speed";
+	status = "okay";
+	zephyr_udc0: udc {
+		status = "okay";
+	};
+};
+
+&wdt {
+	status = "okay";
+};
+
+&dac0 {
+	pinctrl-0 = <&dac0_default>;
+	pinctrl-names = "default";
+	status = "okay";
 };

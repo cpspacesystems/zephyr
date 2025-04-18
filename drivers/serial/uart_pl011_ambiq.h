@@ -13,9 +13,7 @@
 #include <zephyr/pm/policy.h>
 
 #include "uart_pl011_registers.h"
-#include <am_mcu_apollo.h>
-
-#define PWRCTRL_MAX_WAIT_US 5
+#include <soc.h>
 
 static inline void pl011_ambiq_enable_clk(const struct device *dev)
 {

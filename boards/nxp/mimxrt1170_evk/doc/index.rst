@@ -102,77 +102,9 @@ Supported Features
 
 NXP considers the MIMXRT1170-EVK as the superset board for the i.MX RT11xx
 family of MCUs.  This board is a focus for NXP's Full Platform Support for
-Zephyr, to better enable the entire RT11xx family.  NXP prioritizes enabling
-this board with new support for Zephyr features. Note that this table
-covers two boards: the RT1170 EVK (``mimxrt1170_evk//cm7/cm4``), and
-RT1170 EVKB (``mimxrt1170_evk@B//cm7/cm4``)
+Zephyr, to better enable the entire RT11xx family.
 
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| Interface | Controller | Driver/Component                               | RT1170 EVK      | RT1170 EVKB     |
-+===========+============+================================================+=================+=================+
-| NVIC      | on-chip    | nested vector interrupt controller             | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| SYSTICK   | on-chip    | systick                                        | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| GPIO      | on-chip    | gpio                                           | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| COUNTER   | on-chip    | gpt                                            | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| TIMER     | on-chip    | gpt                                            | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| CAN       | on-chip    | flexcan                                        | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| SPI       | on-chip    | spi                                            | Supported (M7)  | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| I2C       | on-chip    | i2c                                            | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| PWM       | on-chip    | pwm                                            | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| ADC       | on-chip    | adc                                            | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| UART      | on-chip    | serial port-polling;                           | Supported       | Supported       |
-|           |            | serial port-interrupt;                         |                 |                 |
-|           |            | serial port-async                              |                 |                 |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| DMA       | on-chip    | dma                                            | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| WATCHDOG  | on-chip    | watchdog                                       | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| ENET      | on-chip    | ethernet - 10/100M                             | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| ENET1G    | on-chip    | ethernet - 10/100/1000M                        | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| SAI       | on-chip    | i2s                                            | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| USB       | on-chip    | USB Device                                     | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| HWINFO    | on-chip    | Unique device serial number                    | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| DISPLAY   | on-chip    | eLCDIF; MIPI-DSI. Tested with                  | Supported (M7)  | Supported (M7)  |
-|           |            | :ref:`rk055hdmipi4m`,                          |                 |                 |
-|           |            | :ref:`rk055hdmipi4ma0`,                        |                 |                 |
-|           |            | and :ref:`g1120b0mipi` shields                 |                 |                 |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| ACMP      | on-chip    | sensor                                         | Supported       | Supported       |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| CAAM RNG  | on-chip    | entropy                                        | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| FLEXSPI   | on-chip    | flash programming                              | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| SDHC      | on-chip    | SD host controller                             | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| PIT       | on-chip    | pit                                            | Supported (M7)  | Supported (M7)  |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| VIDEO     | on-chip    | CSI; MIPI CSI-2 Rx. Tested with                | Supported (M7)  | Supported (M7)  |
-|           |            | :ref:`nxp_btb44_ov5640` shield                 |                 |                 |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-| UART      | NXP IW61x  | M.2 WIFI/BT module                             | Unsupported     | Supported (M7)  |
-|           |            | (select :kconfig:option:`CONFIG_BT_NXP_NW612`) |                 |                 |
-+-----------+------------+------------------------------------------------+-----------------+-----------------+
-
-The default configuration can be found in the defconfig files:
-:zephyr_file:`boards/nxp/mimxrt1170_evk/mimxrt1170_evk_mimxrt1176_cm7_defconfig`
-:zephyr_file:`boards/nxp/mimxrt1170_evk/mimxrt1170_evk_mimxrt1176_cm4_defconfig`
+.. zephyr:board-supported-hw::
 
 Connections and I/Os
 ====================
@@ -315,6 +247,8 @@ that run the command:
 Programming and Debugging
 *************************
 
+.. zephyr:board-supported-runners::
+
 Build and flash applications as usual (see :ref:`build_an_application` and
 :ref:`application_run` for more details).
 
@@ -454,6 +388,16 @@ should see the following message in the terminal:
    ***** Booting Zephyr OS v3.4.0-xxxx-xxxxxxxxxxxxx *****
    Hello World! mimxrt1170_evk
 
+ENET1G Driver
+=============
+
+Current default of ethernet driver is to use 100M Ethernet instance ENET.
+To use the 1G Ethernet instance ENET1G, include the overlay to west build with
+the option ``-DEXTRA_DTC_OVERLAY_FILE=nxp,enet1g.overlay`` instead.
+
+.. include:: ../../common/board-footer.rst
+   :start-after: nxp-board-footer
+
 .. _MIMXRT1170-EVK Website:
    https://www.nxp.com/design/development-boards/i-mx-evaluation-and-development-boards/i-mx-rt1170-evaluation-kit:MIMXRT1170-EVK
 
@@ -480,10 +424,3 @@ should see the following message in the terminal:
 
 .. _NXP MCUXpresso for Visual Studio Code:
 	https://www.nxp.com/design/software/development-software/mcuxpresso-software-and-tools-/mcuxpresso-for-visual-studio-code:MCUXPRESSO-VSC
-
-ENET1G Driver
-=============
-
-Current default of ethernet driver is to use 100M Ethernet instance ENET.
-To use the 1G Ethernet instance ENET1G, include the overlay to west build with
-the option ``-DEXTRA_DTC_OVERLAY_FILE=nxp,enet1g.overlay`` instead.

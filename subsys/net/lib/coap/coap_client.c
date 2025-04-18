@@ -995,7 +995,15 @@ fail:
 		report_callback_error(internal_req, ret);
 	}
 	if (!internal_req->is_observe) {
-		release_internal_request(internal_req);
+		if (response_type == COAP_TYPE_ACK) {
+			/* This is piggybacked ACK,
+			 * no need to wait for lifetime to expire, all data is already transferred
+			 * and acknowledged
+			 */
+			reset_internal_request(internal_req);
+		} else {
+			release_internal_request(internal_req);
+		}
 	}
 	return ret;
 }
@@ -1013,14 +1021,12 @@ static void cancel_requests_with(struct coap_client *client, int error)
 			 * request was cancelled anyway.
 			 */
 			report_callback_error(&client->requests[i], error);
-			release_internal_request(&client->requests[i]);
 		}
-		/* If our socket has failed, clear all requests, even completed ones,
-		 * so that our handle_poll() does not poll() anymore for this socket.
+
+		/* Clear all requests, even completed ones, so that our
+		 * handle_poll() does not poll() anymore for this socket.
 		 */
-		if (error == -EIO) {
-			reset_internal_request(&client->requests[i]);
-		}
+		reset_internal_request(&client->requests[i]);
 	}
 	k_mutex_unlock(&client->lock);
 
@@ -1123,6 +1129,20 @@ struct coap_client_option coap_client_option_initial_block2(void)
 	return block2;
 }
 
+bool coap_client_has_ongoing_exchange(struct coap_client *client)
+{
+	if (client == NULL) {
+		LOG_ERR("Invalid (NULL) Client");
+		return false;
+	}
+
+	return has_ongoing_exchange(client);
+}
+
+#define COAP_CLIENT_THREAD_PRIORITY CLAMP(CONFIG_COAP_CLIENT_THREAD_PRIORITY, \
+					  K_HIGHEST_APPLICATION_THREAD_PRIO, \
+					  K_LOWEST_APPLICATION_THREAD_PRIO)
+
 K_THREAD_DEFINE(coap_client_recv_thread, CONFIG_COAP_CLIENT_STACK_SIZE,
 		coap_client_recv, NULL, NULL, NULL,
-		CONFIG_COAP_CLIENT_THREAD_PRIORITY, 0, 0);
+		COAP_CLIENT_THREAD_PRIORITY, 0, 0);

@@ -141,10 +141,30 @@ struct bt_ccp_call_control_client_cb {
 	void (*discover)(struct bt_ccp_call_control_client *client, int err,
 			 struct bt_ccp_call_control_client_bearers *bearers);
 
-	/** @internal Internally used field for list handling */
+	/** @cond INTERNAL_HIDDEN */
+	/** Internally used field for list handling */
 	sys_snode_t _node;
+	/** @endcond */
 };
 
+/**
+ * @brief Discovers the Telephone Bearer Service (TBS) support on a remote device.
+ *
+ * This will discover the Telephone Bearer Service (TBS) and Generic Telephone Bearer Service (GTBS)
+ * on the remote device.
+ *
+ * @kconfig_dep{CONFIG_BT_CCP_CALL_CONTROL_CLIENT}.
+ *
+ * @param conn Connection to a remote server.
+ * @param out_client Pointer to client instance on success
+ *
+ * @retval 0 Success
+ * @retval -EINVAL @p conn or @p out_client is NULL
+ * @retval -ENOTCONN @p conn is not connected
+ * @retval -ENOMEM Could not allocated memory for the request
+ * @retval -EBUSY Already doing discovery for @p conn
+ * @retval -ENOEXEC Rejected by the GATT layer
+ */
 int bt_ccp_call_control_client_discover(struct bt_conn *conn,
 					struct bt_ccp_call_control_client **out_client);
 
@@ -153,7 +173,7 @@ int bt_ccp_call_control_client_discover(struct bt_conn *conn,
  *
  * @param cb The callback struct
  *
- * @retval 0 Succsss
+ * @retval 0 Success
  * @retval -EINVAL @p cb is NULL
  * @retval -EEXISTS @p cb is already registered
  */
@@ -164,11 +184,24 @@ int bt_ccp_call_control_client_register_cb(struct bt_ccp_call_control_client_cb 
  *
  * @param cb The callback struct
  *
- * @retval 0 Succsss
+ * @retval 0 Success
  * @retval -EINVAL @p cb is NULL
  * @retval -EALREADY @p cb is not registered
  */
 int bt_ccp_call_control_client_unregister_cb(struct bt_ccp_call_control_client_cb *cb);
+
+/**
+ * @brief Get the bearers of a client instance
+ *
+ * @param[in]  client  The client to get the bearers of.
+ * @param[out] bearers The bearers struct that will be populated with the bearers of @p client.
+
+ * @retval 0 Success
+ * @retval -EINVAL @p client or @p bearers is NULL
+ */
+int bt_ccp_call_control_client_get_bearers(struct bt_ccp_call_control_client *client,
+					   struct bt_ccp_call_control_client_bearers *bearers);
+
 /** @} */ /* End of group bt_ccp_call_control_client */
 #ifdef __cplusplus
 }

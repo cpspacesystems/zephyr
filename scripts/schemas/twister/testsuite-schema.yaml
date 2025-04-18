@@ -70,6 +70,9 @@ schema;scenario-schema:
     "extra_sections":
       type: any
       required: false
+    "expect_reboot":
+      type: bool
+      required: false
     "required_snippets":
       type: seq
       required: false
@@ -107,9 +110,23 @@ schema;scenario-schema:
       type: map
       required: false
       mapping:
-        "shell_params_file":
+        "power_measurements":
+          type: any
+          required: false
+        "shell_commands_file":
           type: str
           required: false
+        "shell_commands":
+          type: seq
+          required: false
+          sequence:
+            - type: map
+              mapping:
+                "command":
+                  type: str
+                  required: true
+                "expected":
+                  type: str
         "type":
           type: str
           required: false

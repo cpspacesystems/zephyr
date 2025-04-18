@@ -103,7 +103,7 @@ struct i3c_stm32_msg {
 	size_t num_msgs;                  /* Number of messages */
 	size_t ctrl_msg_idx;              /* Current control message index */
 	size_t status_msg_idx;            /* Current status message index */
-	size_t xfer_msg_idx;              /* Current trasnfer message index */
+	size_t xfer_msg_idx;              /* Current transfer message index */
 	size_t xfer_offset;               /* Current message transfer offset */
 	uint32_t msg_type;                /* Either LL_I3C_CONTROLLER_MTYPE_PRIVATE or
 					   * LL_I3C_CONTROLLER_MTYPE_LEGACY_I2C
@@ -1563,7 +1563,7 @@ static int i3c_stm32_init(const struct device *dev)
 
 #ifdef CONFIG_I3C_USE_IBI
 	LL_I3C_EnableHJAck(i3c);
-	hj_pm_lock = true;
+	data->hj_pm_lock = true;
 	(void)pm_device_runtime_get(dev);
 	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 #endif
@@ -1902,6 +1902,7 @@ static void i3c_stm32_error_isr(void *arg)
 int i3c_stm32_ibi_hj_response(const struct device *dev, bool ack)
 {
 	const struct i3c_stm32_config *config = dev->config;
+	struct i3c_stm32_data *data = dev->data;
 	I3C_TypeDef *i3c = config->i3c;
 
 	if (ack) {
@@ -1909,16 +1910,16 @@ int i3c_stm32_ibi_hj_response(const struct device *dev, bool ack)
 		 * This prevents pm_device_runtime from being called multiple times
 		 * with redunant calls
 		 */
-		if (!hj_pm_lock) {
-			hj_pm_lock = true;
+		if (!data->hj_pm_lock) {
+			data->hj_pm_lock = true;
 			(void)pm_device_runtime_get(dev);
 			pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		}
 		LL_I3C_EnableHJAck(i3c);
 	} else {
 		LL_I3C_DisableHJAck(i3c);
-		if (hj_pm_lock) {
-			hj_pm_lock = false;
+		if (data->hj_pm_lock) {
+			data->hj_pm_lock = false;
 			(void)pm_device_runtime_put(dev);
 			pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		}

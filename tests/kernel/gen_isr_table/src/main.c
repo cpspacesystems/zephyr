@@ -12,7 +12,7 @@
 #include <zephyr/interrupt_util.h>
 #include <zephyr/sys/barrier.h>
 
-extern uint32_t _irq_vector_table[];
+extern uintptr_t _irq_vector_table[];
 
 #if defined(ARCH_IRQ_DIRECT_CONNECT) && defined(CONFIG_GEN_IRQ_VECTOR_TABLE)
 #define HAS_DIRECT_IRQS
@@ -26,7 +26,7 @@ extern uint32_t _irq_vector_table[];
 #define ISR3_OFFSET	17
 #define ISR5_OFFSET	18
 #define TRIG_CHECK_SIZE	19
-#elif defined(CONFIG_SOC_NRF54H20_CPUPPR)
+#elif defined(CONFIG_SOC_NRF54H20_CPUPPR) || defined(CONFIG_SOC_NRF54H20_CPUFLPR)
 #define ISR1_OFFSET	14
 #define ISR3_OFFSET	15
 #define ISR5_OFFSET	16
@@ -76,8 +76,8 @@ extern uint32_t _irq_vector_table[];
  * with isr used here, so add a workaround
  */
 #define TEST_NUM_IRQS	105
-#elif defined(CONFIG_SOC_NRF5340_CPUAPP) || defined(CONFIG_SOC_NRF9160)
-/* In nRF9160 and application core in nRF5340, not all interrupts with highest
+#elif defined(CONFIG_SOC_NRF5340_CPUAPP) || defined(CONFIG_SOC_SERIES_NRF91X)
+/* In the application core of nRF5340 and nRF9 series, not all interrupts with highest
  * numbers are implemented. Thus, limit the number of interrupts reported to
  * the test, so that it does not try to use some unavailable ones.
  */
@@ -226,7 +226,7 @@ static int check_vector(void *isr, int offset)
 	TC_PRINT("Checking _irq_vector_table entry %d for irq %d\n",
 		 TABLE_INDEX(offset), IRQ_LINE(offset));
 
-	if (_irq_vector_table[TABLE_INDEX(offset)] != (uint32_t)isr) {
+	if (_irq_vector_table[TABLE_INDEX(offset)] != (uintptr_t)isr) {
 		TC_PRINT("bad entry %d in vector table\n", TABLE_INDEX(offset));
 		return -1;
 	}

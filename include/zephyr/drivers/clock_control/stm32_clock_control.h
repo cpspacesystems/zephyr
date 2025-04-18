@@ -53,6 +53,8 @@
 #include <zephyr/dt-bindings/clock/stm32h7_clock.h>
 #elif defined(CONFIG_SOC_SERIES_STM32H7RSX)
 #include <zephyr/dt-bindings/clock/stm32h7rs_clock.h>
+#elif defined(CONFIG_SOC_SERIES_STM32MP13X)
+#include <zephyr/dt-bindings/clock/stm32mp13_clock.h>
 #elif defined(CONFIG_SOC_SERIES_STM32N6X)
 #include <zephyr/dt-bindings/clock/stm32n6_clock.h>
 #elif defined(CONFIG_SOC_SERIES_STM32U0X)
@@ -148,6 +150,21 @@
 #define STM32_SYSCLK_SRC_IC2	1
 #endif
 
+#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rcc), st_stm32n6_rcc, okay)
+#if (DT_SAME_NODE(DT_CLOCKS_CTLR_BY_IDX(DT_NODELABEL(cpusw), 0), DT_NODELABEL(rcc)))
+#if (DT_CLOCKS_CELL_BY_IDX(DT_NODELABEL(cpusw), 0, bus) == STM32_SRC_HSI)
+#define STM32_CPUCLK_SRC_HSI	1
+#elif (DT_CLOCKS_CELL_BY_IDX(DT_NODELABEL(cpusw), 0, bus) == STM32_SRC_MSI)
+#define STM32_CPUCLK_SRC_MSI	1
+#elif (DT_CLOCKS_CELL_BY_IDX(DT_NODELABEL(cpusw), 0, bus) == STM32_SRC_HSE)
+#define STM32_CPUCLK_SRC_HSE	1
+#elif (DT_CLOCKS_CELL_BY_IDX(DT_NODELABEL(cpusw), 0, bus) == STM32_SRC_IC1)
+#define STM32_CPUCLK_SRC_IC1	1
+#endif
+#endif /* cpusw clk source is rcc */
+
+#define STM32_TIMG_PRESCALER	DT_PROP(DT_NODELABEL(rcc), timg_prescaler)
+#endif /* rcc node compatible st_stm32n6_rcc and okay */
 
 /** PLL node related symbols */
 
@@ -446,7 +463,8 @@
 #define STM32_HSI_FREQ		DT_PROP(DT_NODELABEL(clk_hsi), clock_frequency)
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(clk_hsi), st_stm32h7_hsi_clock, okay) \
 	|| DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(clk_hsi), st_stm32g0_hsi_clock, okay) \
-	|| DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(clk_hsi), st_stm32c0_hsi_clock, okay)
+	|| DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(clk_hsi), st_stm32c0_hsi_clock, okay) \
+	|| DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(clk_hsi), st_stm32n6_hsi_clock, okay)
 #define STM32_HSI_DIV_ENABLED	1
 #define STM32_HSI_ENABLED	1
 #define STM32_HSI_DIVISOR	DT_PROP(DT_NODELABEL(clk_hsi), hsi_div)
@@ -658,68 +676,36 @@ struct stm32_pclken {
 /** Clock source binding accessors */
 
 /**
- * @brief Obtain register field from clock configuration.
+ * @brief Obtain register field from clock source selection configuration.
  *
  * @param clock clock bit field value.
  */
-#define STM32_CLOCK_REG_GET(clock) \
-	(((clock) >> STM32_CLOCK_REG_SHIFT) & STM32_CLOCK_REG_MASK)
+#define STM32_DT_CLKSEL_REG_GET(clock) \
+	(((clock) >> STM32_DT_CLKSEL_REG_SHIFT) & STM32_DT_CLKSEL_REG_MASK)
 
 /**
- * @brief Obtain position field from clock configuration.
+ * @brief Obtain position field from clock source selection configuration.
  *
  * @param clock Clock bit field value.
  */
-#define STM32_CLOCK_SHIFT_GET(clock) \
-	(((clock) >> STM32_CLOCK_SHIFT_SHIFT) & STM32_CLOCK_SHIFT_MASK)
+#define STM32_DT_CLKSEL_SHIFT_GET(clock) \
+	(((clock) >> STM32_DT_CLKSEL_SHIFT_SHIFT) & STM32_DT_CLKSEL_SHIFT_MASK)
 
 /**
- * @brief Obtain mask field from clock configuration.
+ * @brief Obtain mask field from clock source selection configuration.
  *
  * @param clock Clock bit field value.
  */
-#define STM32_CLOCK_MASK_GET(clock) \
-	(((clock) >> STM32_CLOCK_MASK_SHIFT) & STM32_CLOCK_MASK_MASK)
+#define STM32_DT_CLKSEL_MASK_GET(clock) \
+	(((clock) >> STM32_DT_CLKSEL_MASK_SHIFT) & STM32_DT_CLKSEL_MASK_MASK)
 
 /**
- * @brief Obtain value field from clock configuration.
+ * @brief Obtain value field from clock source selection configuration.
  *
  * @param clock Clock bit field value.
  */
-#define STM32_CLOCK_VAL_GET(clock) \
-	(((clock) >> STM32_CLOCK_VAL_SHIFT) & STM32_CLOCK_VAL_MASK)
-
-/**
- * @brief Obtain register field from MCO configuration.
- *
- * @param mco_cfgr MCO configuration bit field value.
- */
-#define STM32_MCO_CFGR_REG_GET(mco_cfgr) \
-	(((mco_cfgr) >> STM32_MCO_CFGR_REG_SHIFT) & STM32_MCO_CFGR_REG_MASK)
-
-/**
- * @brief Obtain position field from MCO configuration.
- *
- * @param mco_cfgr MCO configuration bit field value.
- */
-#define STM32_MCO_CFGR_SHIFT_GET(mco_cfgr) \
-	(((mco_cfgr) >> STM32_MCO_CFGR_SHIFT_SHIFT) & STM32_MCO_CFGR_SHIFT_MASK)
-
-/**
- * @brief Obtain mask field from MCO configuration.
- *
- * @param mco_cfgr MCO configuration bit field value.
- */
-#define STM32_MCO_CFGR_MASK_GET(mco_cfgr) \
-	(((mco_cfgr) >> STM32_MCO_CFGR_MASK_SHIFT) & STM32_MCO_CFGR_MASK_MASK)
-
-/**
- * @brief Obtain value field from MCO configuration.
- *
- * @param mco_cfgr MCO configuration bit field value.
- */
-#define STM32_MCO_CFGR_VAL_GET(mco_cfgr) \
-	(((mco_cfgr) >> STM32_MCO_CFGR_VAL_SHIFT) & STM32_MCO_CFGR_VAL_MASK)
+#define STM32_DT_CLKSEL_VAL_GET(clock) \
+	(((clock) >> STM32_DT_CLKSEL_VAL_SHIFT) & STM32_DT_CLKSEL_VAL_MASK)
 
 #if defined(STM32_HSE_CSS)
 /**

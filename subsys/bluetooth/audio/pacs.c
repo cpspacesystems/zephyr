@@ -37,7 +37,6 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/util_macro.h>
 
-#include "host/hci_core.h"
 #include "common/bt_str.h"
 
 #include "audio_internal.h"
@@ -296,12 +295,14 @@ static uint16_t supported_context_get(enum bt_audio_dir dir)
 		if (atomic_test_bit(pacs.flags, PACS_FLAG_SNK_PAC)) {
 			return snk_supported_contexts | BT_AUDIO_CONTEXT_TYPE_UNSPECIFIED;
 		}
+		break;
 #endif /* CONFIG_BT_PAC_SNK */
 #if defined(CONFIG_BT_PAC_SRC)
 	case BT_AUDIO_DIR_SOURCE:
 		if (atomic_test_bit(pacs.flags, PACS_FLAG_SRC_PAC)) {
 			return src_supported_contexts | BT_AUDIO_CONTEXT_TYPE_UNSPECIFIED;
 		}
+		break;
 #endif /* CONFIG_BT_PAC_SRC */
 	default:
 		break;
@@ -1221,7 +1222,7 @@ static void pacs_security_changed(struct bt_conn *conn, bt_security_t level,
 		return;
 	}
 
-	if (!bt_addr_le_is_bonded(info.id, info.le.dst)) {
+	if (!bt_le_bond_exists(info.id, info.le.dst)) {
 		return;
 	}
 
@@ -1552,12 +1553,12 @@ enum bt_audio_context bt_pacs_get_available_contexts(enum bt_audio_dir dir)
 		if (atomic_test_bit(pacs.flags, PACS_FLAG_SNK_PAC)) {
 			return snk_available_contexts;
 		}
-		return -EINVAL;
+		break;
 	case BT_AUDIO_DIR_SOURCE:
 		if (atomic_test_bit(pacs.flags, PACS_FLAG_SRC_PAC)) {
 			return src_available_contexts;
 		}
-		return -EINVAL;
+		break;
 	}
 
 	return BT_AUDIO_CONTEXT_TYPE_PROHIBITED;

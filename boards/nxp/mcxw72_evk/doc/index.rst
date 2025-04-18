@@ -27,37 +27,22 @@ For more information about the MCXW72 SoC and MCXW72-EVK board, see:
 Supported Features
 ==================
 
-The ``mcxw72_evk`` board in Zephyr currently supports the following features:
+.. zephyr:board-supported-hw::
 
-+-----------+------------+-------------------------------------+
-| Interface | Controller | Driver/Component                    |
-+===========+============+=====================================+
-| NVIC      | on-chip    | nested vector interrupt controller  |
-+-----------+------------+-------------------------------------+
-| SYSTICK   | on-chip    | systick                             |
-+-----------+------------+-------------------------------------+
-| PINMUX    | on-chip    | pinctrl                             |
-+-----------+------------+-------------------------------------+
-| GPIO      | on-chip    | gpio                                |
-+-----------+------------+-------------------------------------+
-| LPUART    | on-chip    | serial port-polling;                |
-|           |            | serial port-interrupt               |
-+-----------+------------+-------------------------------------+
-| TPM       | on-chip    | pwm                                 |
-+-----------+------------+-------------------------------------+
-| LPTMR     | on-chip    | counter                             |
-+-----------+------------+-------------------------------------+
-| SPI       | on-chip    | spi                                 |
-+-----------+------------+-------------------------------------+
-| FLEXCAN   | on-chip    | can                                 |
-+-----------+------------+-------------------------------------+
-| ADC       | on-chip    | adc                                 |
-+-----------+------------+-------------------------------------+
-| I2C       | on-chip    | i2c                                 |
-+-----------+------------+-------------------------------------+
+Fetch Binary Blobs
+******************
+
+To support Bluetooth, mcxw72_evk requires fetching binary blobs, which can be
+achieved by running the following command:
+
+.. code-block:: console
+
+   west blobs fetch hal_nxp
 
 Programming and Debugging
 *************************
+
+.. zephyr:board-supported-runners::
 
 Build and flash applications as usual (see :ref:`build_an_application` and
 :ref:`application_run` for more details).
@@ -141,11 +126,29 @@ should see the following message in the terminal:
    *** Booting Zephyr OS build v3.7.0-xxx-xxxx ***
    Hello World! mcxw72_evk/mcxw727c/cpu0
 
+Bluetooth
+=========
+
+BLE functionality requires to fetch binary blobs, so make sure to follow
+the ``Fetch Binary Blobs`` section first.
+
+Two images must be written to the board: one for the host (CM33 core0) and one for the NBU (CM33 core1).
+- To flash the application (CM33) refer to the ``Flashing`` section above.
+- To flash the NBU, follow the instructions below:
+
+.. code-block:: console
+
+	JLinkExe -device MCXW727C_CORE1 -if SWD -speed 4000 -autoconnect 1
+	J-Link>loadbin <path to nbu blob file> 0x0
+
 Troubleshooting
 ===============
 
 .. include:: ../../common/segger-ecc-systemview.rst
    :start-after: segger-ecc-systemview
+
+.. include:: ../../common/board-footer.rst
+   :start-after: nxp-board-footer
 
 References
 **********
