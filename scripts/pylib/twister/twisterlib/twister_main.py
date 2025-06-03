@@ -15,51 +15,19 @@ from colorama import Fore
 from twisterlib.coverage import run_coverage
 from twisterlib.environment import TwisterEnv
 from twisterlib.hardwaremap import HardwareMap
+from twisterlib.log_helper import close_logging, setup_logging
 from twisterlib.package import Artifacts
 from twisterlib.reports import Reporting
 from twisterlib.runner import TwisterRunner
 from twisterlib.statuses import TwisterStatus
 from twisterlib.testplan import TestPlan
 
-logger = logging.getLogger("twister")
-logger.setLevel(logging.DEBUG)
-
-
-def setup_logging(outdir, log_file, log_level, timestamps):
-    # create file handler which logs even debug messages
-    if log_file:
-        fh = logging.FileHandler(log_file)
-    else:
-        fh = logging.FileHandler(os.path.join(outdir, "twister.log"))
-
-    fh.setLevel(logging.DEBUG)
-
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(getattr(logging, log_level))
-
-    # create formatter and add it to the handlers
-    if timestamps:
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    else:
-        formatter = logging.Formatter("%(levelname)-7s - %(message)s")
-
-    formatter_file = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    ch.setFormatter(formatter)
-    fh.setFormatter(formatter_file)
-
-    # add the handlers to logger
-    logger.addHandler(ch)
-    logger.addHandler(fh)
-
 
 def init_color(colorama_strip):
     colorama.init(strip=colorama_strip)
 
 
-def main(options: argparse.Namespace, default_options: argparse.Namespace):
+def twister(options: argparse.Namespace, default_options: argparse.Namespace):
     start_time = time.time()
 
     # Configure color output
@@ -108,6 +76,7 @@ def main(options: argparse.Namespace, default_options: argparse.Namespace):
             fp.write(previous_results)
 
     setup_logging(options.outdir, options.log_file, options.log_level, options.timestamps)
+    logger = logging.getLogger("twister")
 
     env = TwisterEnv(options, default_options)
     env.discover()
@@ -166,6 +135,16 @@ def main(options: argparse.Namespace, default_options: argparse.Namespace):
         report.synopsis()
         return 0
 
+    # FIXME: This is a workaround for the fact that the hardware map can be usng
+    # the short name of the platform, while the testplan is using the full name.
+    #
+    # convert platform names coming from the hardware map to the full target
+    # name.
+    # this is needed to match the platform names in the testplan.
+    for d in hwm.duts:
+        if d.platform in tplan.platform_names:
+            d.platform = tplan.get_platform(d.platform).name
+
     if options.device_testing and not options.build_only:
         print("\nDevice testing on:")
         hwm.dump(filtered=tplan.selected_platforms)
@@ -180,15 +159,6 @@ def main(options: argparse.Namespace, default_options: argparse.Namespace):
         tplan.create_build_dir_links()
 
     runner = TwisterRunner(tplan.instances, tplan.testsuites, env)
-    # FIXME: This is a workaround for the fact that the hardware map can be usng
-    # the short name of the platform, while the testplan is using the full name.
-    #
-    # convert platform names coming from the hardware map to the full target
-    # name.
-    # this is needed to match the platform names in the testplan.
-    for d in hwm.duts:
-        if d.platform in tplan.platform_names:
-            d.platform = tplan.get_platform(d.platform).name
     runner.duts = hwm.duts
     runner.run()
 
@@ -212,7 +182,7 @@ def main(options: argparse.Namespace, default_options: argparse.Namespace):
     if options.verbose > 1:
         runner.results.summary()
 
-    report.summary(runner.results, options.disable_unrecognized_section_test, duration)
+    report.summary(runner.results, duration)
 
     report.coverage_status = True
     if options.coverage and not options.disable_coverage_aggregation:
@@ -252,3 +222,11 @@ def main(options: argparse.Namespace, default_options: argparse.Namespace):
 
     logger.info("Run completed")
     return 0
+
+
+def main(options: argparse.Namespace, default_options: argparse.Namespace):
+    try:
+        return_code = twister(options, default_options)
+    finally:
+        close_logging()
+    return return_code

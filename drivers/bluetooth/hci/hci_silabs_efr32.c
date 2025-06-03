@@ -52,6 +52,7 @@ static struct k_fifo slz_rx_fifo;
 /* FIXME: these functions should come from the SiSDK headers! */
 void BTLE_LL_EventRaise(uint32_t events);
 void BTLE_LL_Process(uint32_t events);
+int16_t BTLE_LL_SetMaxPower(int16_t power);
 bool sli_pending_btctrl_events(void);
 RAIL_Handle_t BTLE_LL_GetRadioHandle(void);
 
@@ -194,28 +195,12 @@ uint32_t hci_common_transport_transmit(uint8_t *data, int16_t len)
 
 static int slz_bt_send(const struct device *dev, struct net_buf *buf)
 {
-	int rv = 0;
+	int rv;
 
 	ARG_UNUSED(dev);
 
-	switch (bt_buf_get_type(buf)) {
-	case BT_BUF_ACL_OUT:
-		net_buf_push_u8(buf, BT_HCI_H4_ACL);
-		break;
-	case BT_BUF_CMD:
-		net_buf_push_u8(buf, BT_HCI_H4_CMD);
-		break;
-	default:
-		rv = -EINVAL;
-		goto done;
-	}
-
 	rv = hci_common_transport_receive(buf->data, buf->len, true);
-	if (!rv) {
-		goto done;
-	}
 
-done:
 	net_buf_unref(buf);
 	return rv;
 }
@@ -256,6 +241,18 @@ static void slz_rx_thread_func(void *p1, void *p2, void *p3)
 	}
 }
 
+static void slz_set_tx_power(int16_t max_power_dbm)
+{
+	const int16_t max_power_cbm = max_power_dbm * 10;
+	const int16_t actual_max_power_cbm = BTLE_LL_SetMaxPower(max_power_cbm);
+	const int16_t actual_max_power_dbm = DIV_ROUND_CLOSEST(actual_max_power_cbm, 10);
+
+	if (actual_max_power_dbm != max_power_dbm) {
+		LOG_WRN("Unable to set max TX power to %d dBm, actual max is %d dBm", max_power_dbm,
+			actual_max_power_dbm);
+	}
+}
+
 static int slz_bt_open(const struct device *dev, bt_hci_recv_t recv)
 {
 	struct hci_data *hci = dev->data;
@@ -271,10 +268,12 @@ static int slz_bt_open(const struct device *dev, bt_hci_recv_t recv)
 	k_thread_create(&slz_ll_thread, slz_ll_stack, K_KERNEL_STACK_SIZEOF(slz_ll_stack),
 			slz_ll_thread_func, NULL, NULL, NULL,
 			K_PRIO_COOP(CONFIG_BT_SILABS_EFR32_LL_THREAD_PRIO), 0, K_NO_WAIT);
+	k_thread_name_set(&slz_ll_thread, "EFR32 LL");
 
 	k_thread_create(&slz_rx_thread, slz_rx_stack, K_KERNEL_STACK_SIZEOF(slz_rx_stack),
 			slz_rx_thread_func, (void *)dev, NULL, NULL,
 			K_PRIO_COOP(CONFIG_BT_DRIVER_RX_HIGH_PRIO), 0, K_NO_WAIT);
+	k_thread_name_set(&slz_rx_thread, "EFR32 HCI RX");
 
 	rail_isr_installer();
 	sl_rail_util_pa_init();
@@ -302,6 +301,8 @@ static int slz_bt_open(const struct device *dev, bt_hci_recv_t recv)
 		LOG_ERR("Bluetooth link layer init failed %d", ret);
 		goto deinit;
 	}
+
+	slz_set_tx_power(CONFIG_BT_CTLR_TX_PWR_ANTENNA);
 
 	sl_btctrl_init_adv();
 	sl_btctrl_init_scan();

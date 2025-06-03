@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 Linaro Limited.
+ * Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -93,7 +94,7 @@ static int region_allocate_and_init(const uint8_t index,
 						    (reg).dt_addr,	\
 						    (reg).dt_size,	\
 						    _ATTR)
-
+#ifdef CONFIG_MEM_ATTR
 /* This internal function programs the MPU regions defined in the DT when using
  * the `zephyr,memory-attr = <( DT_MEM_ARM(...) )>` property.
  */
@@ -111,6 +112,11 @@ static int mpu_configure_regions_from_dt(uint8_t *reg_index)
 		case DT_MEM_ARM_MPU_RAM:
 			region_conf = _BUILD_REGION_CONF(region[idx], REGION_RAM_ATTR);
 			break;
+#ifdef CONFIG_ARM_MPU_PXN
+		case DT_MEM_ARM_MPU_RAM_PXN:
+			region_conf = _BUILD_REGION_CONF(region[idx], REGION_RAM_ATTR_PXN);
+			break;
+#endif
 #ifdef REGION_RAM_NOCACHE_ATTR
 		case DT_MEM_ARM_MPU_RAM_NOCACHE:
 			region_conf = _BUILD_REGION_CONF(region[idx], REGION_RAM_NOCACHE_ATTR);
@@ -158,7 +164,7 @@ static int mpu_configure_regions_from_dt(uint8_t *reg_index)
 
 	return 0;
 }
-
+#endif /* CONFIG_MEM_ATTR */
 /* This internal function programs an MPU region
  * of a given configuration at a given MPU index.
  */
@@ -459,13 +465,13 @@ int z_arm_mpu_init(void)
 
 	/* Update the number of programmed MPU regions. */
 	static_regions_num = mpu_config.num_regions;
-
+#ifdef CONFIG_MEM_ATTR
 	/* DT-defined MPU regions. */
 	if (mpu_configure_regions_from_dt(&static_regions_num) == -EINVAL) {
 		__ASSERT(0, "Failed to allocate MPU regions from DT\n");
 		return -EINVAL;
 	}
-
+#endif /* CONFIG_MEM_ATTR */
 	/* Clear all regions before enabling MPU */
 	for (int i = static_regions_num; i < get_num_regions(); i++) {
 		mpu_clear_region(i);

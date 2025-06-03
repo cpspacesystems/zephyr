@@ -16,6 +16,7 @@
 #include <zephyr/bluetooth/hci_raw.h>
 #include <zephyr/bluetooth/hci_types.h>
 
+#include "common/hci_common_internal.h"
 #include "common/bt_str.h"
 
 #include "host/conn_internal.h"
@@ -55,7 +56,7 @@ static att_handler_t att_handlers[LAST_SUPPORTED_ATT_OPCODE];
 static K_FIFO_DEFINE(rx_queue);
 
 #define CMD_BUF_SIZE MAX(BT_BUF_EVT_RX_SIZE, BT_BUF_CMD_TX_SIZE)
-NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
+NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, BT_BUF_CMD_TX_COUNT,
 			  CMD_BUF_SIZE, 8, NULL);
 
 static K_SEM_DEFINE(cmd_sem, 1, 1);
@@ -77,9 +78,7 @@ struct net_buf *bt_hci_cmd_create(uint16_t opcode, uint8_t param_len)
 
 	LOG_DBG("buf %p", buf);
 
-	net_buf_reserve(buf, BT_BUF_RESERVE);
-
-	bt_buf_set_type(buf, BT_BUF_CMD);
+	net_buf_add_u8(buf, BT_HCI_H4_CMD);
 
 	hdr = net_buf_add(buf, sizeof(*hdr));
 	hdr->opcode = sys_cpu_to_le16(opcode);
@@ -305,9 +304,10 @@ static void recv(struct net_buf *buf)
 {
 	LOG_HEXDUMP_DBG(buf->data, buf->len, "HCI RX");
 
+	uint8_t type = net_buf_pull_u8(buf);
 	uint8_t code = buf->data[0];
 
-	if (bt_buf_get_type(buf) == BT_BUF_EVT) {
+	if (type == BT_HCI_H4_EVT) {
 		switch (code) {
 		case BT_HCI_EVT_CMD_COMPLETE:
 		case BT_HCI_EVT_CMD_STATUS:
@@ -334,7 +334,7 @@ static void recv(struct net_buf *buf)
 		return;
 	}
 
-	if (bt_buf_get_type(buf) == BT_BUF_ACL_IN) {
+	if (type == BT_HCI_H4_ACL) {
 		handle_acl(buf);
 		net_buf_unref(buf);
 		return;
@@ -524,7 +524,7 @@ static int send_acl(struct net_buf *buf)
 	hdr->handle = sys_cpu_to_le16(bt_acl_handle_pack(conn_handle, flags));
 	hdr->len = sys_cpu_to_le16(buf->len - sizeof(*hdr));
 
-	bt_buf_set_type(buf, BT_BUF_ACL_OUT);
+	net_buf_push_u8(buf, BT_HCI_H4_ACL);
 
 	k_sem_take(&acl_pkts, K_FOREVER);
 

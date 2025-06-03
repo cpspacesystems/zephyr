@@ -76,9 +76,6 @@ enum mgmt_cb_return {
 	MGMT_CB_ERROR_ERR,
 };
 
-/* Deprecated after Zephyr 3.4, use MGMT_CB_ERROR_ERR instead */
-#define MGMT_CB_ERROR_RET __DEPRECATED_MACRO MGMT_CB_ERROR_ERR
-
 /**
  * @typedef mgmt_cb
  * @brief Function to be called on MGMT notification/event.
@@ -158,6 +155,9 @@ enum smp_group_events {
 enum fs_mgmt_group_events {
 	/** Callback when a file has been accessed, data is fs_mgmt_file_access(). */
 	MGMT_EVT_OP_FS_MGMT_FILE_ACCESS		= MGMT_DEF_EVT_OP_ID(MGMT_EVT_GRP_FS, 0),
+
+	/** Callback when a file upload/download is finished, data is fs_mgmt_file_access(). */
+	MGMT_EVT_OP_FS_MGMT_FILE_ACCESS_DONE	= MGMT_DEF_EVT_OP_ID(MGMT_EVT_GRP_FS, 1),
 
 	/** Used to enable all fs_mgmt_group events. */
 	MGMT_EVT_OP_FS_MGMT_ALL			= MGMT_DEF_EVT_OP_ALL(MGMT_EVT_GRP_FS),

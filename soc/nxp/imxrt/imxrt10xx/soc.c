@@ -1,5 +1,5 @@
 /*
- * Copyright  2017-2023 NXP
+ * Copyright  2017-2024 NXP
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -22,7 +22,7 @@
 #include "usb.h"
 #endif
 
-#include "memc_nxp_flexram.h"
+#include <zephyr/drivers/misc/flexram/nxp_flexram.h>
 
 #include <cmsis_core.h>
 
@@ -51,7 +51,7 @@ const clock_sys_pll_config_t sysPllConfig = {
 #endif
 
 #if CONFIG_USB_DC_NXP_EHCI
-/* USB PHY condfiguration */
+/* USB PHY configuration */
 #define BOARD_USB_PHY_D_CAL (0x0CU)
 #define BOARD_USB_PHY_TXCAL45DP (0x06U)
 #define BOARD_USB_PHY_TXCAL45DM (0x06U)
@@ -66,7 +66,7 @@ const clock_enet_pll_config_t ethPllConfig = {
 	defined(CONFIG_SOC_MIMXRT1024)
 	.enableClkOutput500M = true,
 #endif
-#if defined(CONFIG_ETH_NXP_ENET) || defined(CONFIG_ETH_MCUX)
+#if defined(CONFIG_ETH_NXP_ENET)
 #if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(enet))
 	.enableClkOutput = true,
 #endif
@@ -74,7 +74,7 @@ const clock_enet_pll_config_t ethPllConfig = {
 	.enableClkOutput1 = true,
 #endif
 #endif
-#if defined(CONFIG_PTP_CLOCK_MCUX) || defined(CONFIG_PTP_CLOCK_NXP_ENET)
+#if defined(CONFIG_PTP_CLOCK_NXP_ENET)
 	.enableClkOutput25M = true,
 #else
 	.enableClkOutput25M = false,
@@ -151,14 +151,15 @@ __weak void clock_init(void)
 	/* Set PERIPH_CLK MUX to PERIPH_CLK2 */
 	CLOCK_SetMux(kCLOCK_PeriphMux, 0x1);
 
-	/* Setting the VDD_SOC value.
-	 */
+#if CONFIG_ADJUST_DCDC
+	/* Setting the VDD_SOC value */
 	DCDC->REG3 = (DCDC->REG3 & (~DCDC_REG3_TRG_MASK)) | DCDC_REG3_TRG(CONFIG_DCDC_VALUE);
 	/* Waiting for DCDC_STS_DC_OK bit is asserted */
 	while (DCDC_REG0_STS_DC_OK_MASK !=
 			(DCDC_REG0_STS_DC_OK_MASK & DCDC->REG0)) {
 		;
 	}
+#endif
 
 #ifdef CONFIG_INIT_ARM_PLL
 	CLOCK_InitArmPll(&armPllConfig); /* Configure ARM PLL to 1200M */
@@ -209,8 +210,9 @@ __weak void clock_init(void)
 #endif
 
 #ifdef CONFIG_SPI_MCUX_LPSPI
-	CLOCK_SetMux(kCLOCK_LpspiMux, 1); /* Set SPI source to USB1 PFD0 720M */
-	CLOCK_SetDiv(kCLOCK_LpspiDiv, 7); /* Set SPI divider to 8 */
+	/* Configure input clock to be able to reach the datasheet specified band rate. */
+	CLOCK_SetMux(kCLOCK_LpspiMux, 1); /* Set SPI source to USB1 PFD0 */
+	CLOCK_SetDiv(kCLOCK_LpspiDiv, 0); /* Set SPI divider to 1 */
 #endif
 
 #ifdef CONFIG_DISPLAY_MCUX_ELCDIF
@@ -227,7 +229,7 @@ __weak void clock_init(void)
 
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(enet)) && CONFIG_NET_L2_ETHERNET
-#if CONFIG_ETH_MCUX_RMII_EXT_CLK
+#if CONFIG_ETH_NXP_ENET_RMII_EXT_CLK
 	/* Enable clock input for ENET1 */
 	IOMUXC_EnableMode(IOMUXC_GPR, kIOMUXC_GPR_ENET1TxClkOutputDir, false);
 #else
@@ -243,8 +245,9 @@ __weak void clock_init(void)
 				kIOMUXC_GPR_ENET2RefClkMode, true);
 #endif
 
-#if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(usb1)) && \
-	(CONFIG_USB_DC_NXP_EHCI || CONFIG_UDC_NXP_EHCI)
+#if ((DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(usb1)) && \
+	(CONFIG_USB_DC_NXP_EHCI || CONFIG_UDC_NXP_EHCI)) ||\
+	(DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(usbh1)) && (CONFIG_UHC_NXP_EHCI)))
 	CLOCK_EnableUsbhs0PhyPllClock(kCLOCK_Usb480M,
 		DT_PROP_BY_PHANDLE(DT_NODELABEL(usb1), clocks, clock_frequency));
 	CLOCK_EnableUsbhs0Clock(kCLOCK_Usb480M,
@@ -254,8 +257,9 @@ __weak void clock_init(void)
 #endif
 #endif
 
-#if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(usb2)) && \
-	(CONFIG_USB_DC_NXP_EHCI || CONFIG_UDC_NXP_EHCI)
+#if ((DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(usb2)) && \
+	(CONFIG_USB_DC_NXP_EHCI || CONFIG_UDC_NXP_EHCI)) ||\
+	(DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(usbh2)) && (CONFIG_UHC_NXP_EHCI)))
 	CLOCK_EnableUsbhs1PhyPllClock(kCLOCK_Usb480M,
 		DT_PROP_BY_PHANDLE(DT_NODELABEL(usb2), clocks, clock_frequency));
 	CLOCK_EnableUsbhs1Clock(kCLOCK_Usb480M,
@@ -365,7 +369,7 @@ void soc_reset_hook(void)
 
 #if defined(FLEXRAM_RUNTIME_BANKS_USED)
 	/* Configure flexram if not running from RAM */
-	memc_flexram_dt_partition();
+	flexram_dt_partition();
 #endif
 }
 #endif

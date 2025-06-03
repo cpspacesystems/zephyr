@@ -23,12 +23,19 @@
 #endif
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(openamp_rsc_table, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(openamp_rsc_table);
 
 #define SHM_DEVICE_NAME	"shm"
 
 #if !DT_HAS_CHOSEN(zephyr_ipc_shm)
 #error "Sample requires definition of shared memory for rpmsg"
+#endif
+
+#if CONFIG_IPM_MAX_DATA_SIZE > 0
+
+#define	IPM_SEND(dev, w, id, d, s) ipm_send(dev, w, id, d, s)
+#else
+#define IPM_SEND(dev, w, id, d, s) ipm_send(dev, w, id, NULL, 0)
 #endif
 
 /* Constants derived from device tree */
@@ -133,7 +140,7 @@ int mailbox_notify(void *priv, uint32_t id)
 	ARG_UNUSED(priv);
 
 	LOG_DBG("%s: msg received", __func__);
-	ipm_send(ipm_handle, 0, id, NULL, 0);
+	IPM_SEND(ipm_handle, 0, id, &id, 4);
 
 	return 0;
 }

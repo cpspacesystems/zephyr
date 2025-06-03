@@ -13,8 +13,9 @@ Hardware
 
 - MIMXRT1189CVM8B MCU
 
-  - 240MHz Cortex-M33 & 792Mhz Cortex-M7
-  - 1.5MB SRAM with 512KB of TCM for Cortex-M7 and 256KB of TCM for Cortex-M4
+  - 240MHz Cortex-M33 with 256KB TCM and 16 KB caches
+  - 792Mhz Cortex-M7 with 512KB TCM and 32 KB caches
+  - 1.5MB SRAM
 
 - Memory
 
@@ -70,7 +71,7 @@ This platform has the following external memories:
 |                    |            | data block, which sets up SEMC at   |
 |                    |            | boot time                           |
 +--------------------+------------+-------------------------------------+
-| W25Q128JWSIQ       | FLEXSPI    | Enabled via flash configurationn    |
+| W25Q128JWSIQ       | FLEXSPI    | Enabled via flash configuration     |
 |                    |            | block, which sets up FLEXSPI at     |
 |                    |            | boot time.                          |
 +--------------------+------------+-------------------------------------+
@@ -81,61 +82,9 @@ Supported Features
 NXP considers the MIMXRT1180-EVK as the superset board for the i.MX RT118x
 family of MCUs.  This board is a focus for NXP's Full Platform Support for
 Zephyr, to better enable the entire RT118x family.  NXP prioritizes enabling
-this board with new support for Zephyr features.  The mimxrt1180_evk board
-configuration supports the following hardware features:
+this board with new support for Zephyr features.
 
-+-----------+------------+-------------------------------------+
-| Interface | Controller | Driver/Component                    |
-+===========+============+=====================================+
-| NVIC      | on-chip    | nested vector interrupt controller  |
-+-----------+------------+-------------------------------------+
-| SYSTICK   | on-chip    | systick                             |
-+-----------+------------+-------------------------------------+
-| GPIO      | on-chip    | gpio                                |
-+-----------+------------+-------------------------------------+
-| GPT       | on-chip    | counter                             |
-+-----------+------------+-------------------------------------+
-| QTMR      | on-chip    | counter                             |
-+-----------+------------+-------------------------------------+
-| UART      | on-chip    | serial port-polling;                |
-|           |            | serial port-interrupt               |
-+-----------+------------+-------------------------------------+
-| I2C       | on-chip    | i2c                                 |
-+-----------+------------+-------------------------------------+
-| ACMP      | on-chip    | sensor                              |
-+-----------+------------+-------------------------------------+
-| ADC       | on-chip    | adc                                 |
-+-----------+------------+-------------------------------------+
-| NETC      | on-chip    | dsa, ethernet, mdio                 |
-+-----------+------------+-------------------------------------+
-| CAN       | on-chip    | can                                 |
-+-----------+------------+-------------------------------------+
-| LPTMR     | on-chip    | counter                             |
-+-----------+------------+-------------------------------------+
-| FLEXSPI   | on-chip    | flash programming                   |
-+-----------+------------+-------------------------------------+
-| PWM       | on-chip    | pwm                                 |
-+-----------+------------+-------------------------------------+
-| PWM       | on-chip    | tpm                                 |
-+-----------+------------+-------------------------------------+
-| I3C       | on-chip    | i3c                                 |
-+-----------+------------+-------------------------------------+
-| DMA       | on-chip    | dma                                 |
-+-----------+------------+-------------------------------------+
-| SPI       | on-chip    | spi                                 |
-+-----------+------------+-------------------------------------+
-| RTWDOG    | on-chip    | rtwdog                              |
-+-----------+------------+-------------------------------------+
-| HWINFO    | on-chip    | Unique device serial number         |
-+-----------+------------+-------------------------------------+
-| USB       | on-chip    | USB device                          |
-+-----------+------------+-------------------------------------+
-
-The default configuration can be found in the defconfig file:
-:zephyr_file:`boards/nxp/mimxrt1180_evk/mimxrt1180_evk_mimxrt1189_cm33_defconfig`
-
-Other hardware features are not currently supported by the port.
-
+.. zephyr:board-supported-hw::
 
 Connections and I/Os
 ====================
@@ -149,9 +98,13 @@ The MIMXRT1180 SoC has six pairs of pinmux/gpio controllers.
 +---------------+-----------------+---------------------------+
 | GPIO_AD_27    | GPIO            | LED                       |
 +---------------+-----------------+---------------------------+
-| GPIO_AON_08   | LPUART1_TX      | UART Console              |
+| GPIO_AON_08   | LPUART1_TX      | UART Console M33 core     |
 +---------------+-----------------+---------------------------+
-| GPIO_AON_09   | LPUART1_RX      | UART Console              |
+| GPIO_AON_09   | LPUART1_RX      | UART Console M33 core     |
++---------------+---------------------------------------------+
+| GPIO_AON_19   | LPUART12_TX     | UART Console M7 core      |
++---------------+-----------------+---------------------------+
+| GPIO_AON_20   | LPUART12_RX     | UART Console M7 core      |
 +---------------+-----------------+---------------------------+
 | GPIO_SD_B1_00 | SPI1_CS0        | spi                       |
 +---------------+---------------------------------------------+
@@ -160,7 +113,10 @@ The MIMXRT1180 SoC has six pairs of pinmux/gpio controllers.
 | GPIO_SD_B1_02 | SPI1_SDO        | spi                       |
 +---------------+---------------------------------------------+
 | GPIO_SD_B1_03 | SPI1_SDI        | spi                       |
-+---------------+---------------------------------------------+
++---------------+-----------------+---------------------------+
+
+UART for M7 core is connected to USB-to-UART J60 connector.
+Or user can use open JP7 Jumper to enable second UART on MCU LINK J53 connector.
 
 System Clock
 ============
@@ -172,8 +128,8 @@ running at 792MHz
 Serial Port
 ===========
 
-The MIMXRT1180 SoC has 12 UARTs. One is configured for the console and the
-remaining are not used.
+The MIMXRT1180 SoC has 12 UARTs. LPUART1 is configured for the CM33 console, the LPUART12 is
+configured for the CM7 console core and the remaining are not used.
 
 Ethernet
 ========
@@ -210,6 +166,8 @@ DSA master port. DSA master port support is TODO work.
 
 Programming and Debugging
 *************************
+
+.. zephyr:board-supported-runners::
 
 Build and flash applications as usual (see :ref:`build_an_application` and
 :ref:`application_run` for more details).
@@ -252,6 +210,16 @@ Please ensure to use a version of Linkserver above V1.5.30 and jumper JP5 is uni
 When debugging cm33 core, need to ensure the SW5 on "0100" mode.
 When debugging cm7 core, need to ensure the SW5 on "0001" mode.
 (Only support run cm7 image when debugging due to default boot core on board is cm33 core)
+
+Dual Core samples Debugging
+***************************
+
+When debugging dual core samples, need to ensure the SW5 on "0100" mode.
+The CM33 core is responsible for copying and starting the CM7.
+To debug the CM7 it is useful to put infinite while loop either in reset vector or
+into main function and attach via debugger to CM7 core.
+
+CM7 core can be started again only after reset, so after flashing ensure to reset board.
 
 Configuring a Console
 =====================
@@ -309,6 +277,9 @@ should see the following message in the terminal:
 
    ***** Booting Zephyr OS v3.7.0-xxx-xxxxxxxxxxxxx *****
    Hello World! mimxrt1180_evk/mimxrt1189/cm33
+
+.. include:: ../../common/board-footer.rst
+   :start-after: nxp-board-footer
 
 .. _MIMXRT1180-EVK Website:
    https://www.nxp.com/design/design-center/development-boards-and-designs/i-mx-evaluation-and-development-boards/i-mx-rt1180-evaluation-kit:MIMXRT1180-EVK

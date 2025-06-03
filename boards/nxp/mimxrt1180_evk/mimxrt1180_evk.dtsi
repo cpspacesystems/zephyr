@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 NXP
+ * Copyright 2024-2025 NXP
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,7 @@
 		led0 = &green_led;
 		sw0 = &user_button;
 		pwm-led0 = &green_pwm_led;
+		sdhc0 = &usdhc1;
 	};
 
 	leds {
@@ -19,7 +20,7 @@
 		green_led: led-1 {
 			gpios = <&gpio4 27 GPIO_ACTIVE_HIGH>;
 			label = "User LED D6";
-	    };
+		};
 	};
 
 	gpio_keys {
@@ -94,7 +95,7 @@
 };
 
 &switch_port0 {
-	local-mac-address = [00 00 00 01 04 00];
+	zephyr,random-mac-address;
 	pinctrl-0 = <&eth0_default>;
 	pinctrl-names = "default";
 	phy-handle = <&phy0>;
@@ -103,7 +104,7 @@
 };
 
 &switch_port1 {
-	local-mac-address = [00 00 00 01 05 00];
+	zephyr,random-mac-address;
 	pinctrl-0 = <&eth1_default>;
 	pinctrl-names = "default";
 	phy-handle = <&phy1>;
@@ -112,7 +113,7 @@
 };
 
 &switch_port2 {
-	local-mac-address = [00 00 00 01 06 00];
+	zephyr,random-mac-address;
 	pinctrl-0 = <&eth2_default>;
 	pinctrl-names = "default";
 	phy-handle = <&phy2>;
@@ -121,7 +122,7 @@
 };
 
 &switch_port3 {
-	local-mac-address = [00 00 00 01 07 00];
+	zephyr,random-mac-address;
 	pinctrl-0 = <&eth3_default>;
 	pinctrl-names = "default";
 	phy-handle = <&phy3>;
@@ -131,7 +132,7 @@
 
 /* Internal port */
 &switch_port4 {
-	local-mac-address = [00 00 00 01 06 00];
+	zephyr,random-mac-address;
 	status = "okay";
 };
 
@@ -140,6 +141,14 @@
 	current-speed = <115200>;
 	pinctrl-0 = <&pinmux_lpuart1>;
 	pinctrl-1 = <&pinmux_lpuart1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&lpuart12 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&pinmux_lpuart12>;
+	pinctrl-1 = <&pinmux_lpuart12_sleep>;
 	pinctrl-names = "default", "sleep";
 };
 
@@ -190,24 +199,25 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
+			/*
+			 * Partition sizes must be aligned
+			 * to the flash memory sector size of 4KB.
+			 */
 			boot_partition: partition@0 {
 				label = "mcuboot";
 				reg = <0x00000000 DT_SIZE_K(128)>;
 			};
-			/* The MCUBoot swap-move algorithm uses the last 3 sectors
-			 * of the primary slot0 for swap status and move.
-			 */
 			slot0_partition: partition@20000 {
 				label = "image-0";
-				reg = <0x00020000 (DT_SIZE_M(7) + DT_SIZE_K(12))>;
+				reg = <0x00020000 DT_SIZE_M(7)>;
 			};
-			slot1_partition: partition@723000 {
+			slot1_partition: partition@720000 {
 				label = "image-1";
-				reg = <0x00723000 DT_SIZE_M(7)>;
+				reg = <0x00720000 DT_SIZE_M(7)>;
 			};
-			storage_partition: partition@E23000 {
+			storage_partition: partition@E20000 {
 				label = "storage";
-				reg = <0x00E23000 (DT_SIZE_M(2) - DT_SIZE_K(140))>;
+				reg = <0x00E20000 (DT_SIZE_M(2) - DT_SIZE_K(128))>;
 			};
 		};
 	};
@@ -260,4 +270,19 @@ p3t1755dp_ard_i2c_interface: &lpi2c2 {};
 	dma-names = "rx", "tx";
 	pinctrl-0 = <&pinmux_lpspi3>;
 	pinctrl-names = "default";
+};
+
+&usdhc1 {
+	status = "okay";
+	detect-dat3;
+	no-1-8-v;
+	pwr-gpios = <&gpio4 14 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&pinmux_usdhc1>;
+	pinctrl-1 = <&pinmux_usdhc1_dat3_nopull>;
+	pinctrl-names = "default", "nopull";
+	sdmmc {
+		compatible = "zephyr,sdmmc-disk";
+		disk-name = "SD";
+		status = "okay";
+	};
 };

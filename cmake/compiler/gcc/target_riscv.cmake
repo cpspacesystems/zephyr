@@ -81,6 +81,11 @@ if(CONFIG_RISCV_ISA_EXT_ZBS)
     string(CONCAT riscv_march ${riscv_march} "_zbs")
 endif()
 
+if(CONFIG_RISCV_ISA_EXT_ZMMUL AND
+   "${GCC_COMPILER_VERSION}" VERSION_GREATER_EQUAL 13.0.0)
+    string(CONCAT riscv_march ${riscv_march} "_zmmul")
+endif()
+
 list(APPEND TOOLCHAIN_C_FLAGS -mabi=${riscv_mabi} -march=${riscv_march})
 list(APPEND TOOLCHAIN_LD_FLAGS NO_SPLIT -mabi=${riscv_mabi} -march=${riscv_march})
 
@@ -98,8 +103,12 @@ set(LLEXT_REMOVE_FLAGS
 # Flags to be added to llext code compilation
 # mno-relax is needed to stop gcc from generating R_RISCV_ALIGN relocations,
 # which are currently not supported
+# -msmall-data-limit=0 disables the "small data" sections such as .sbss and .sdata
+# only one NOBITS sections is supported at a time, so having .sbss can cause
+# llext's not to be loadable
 set(LLEXT_APPEND_FLAGS
   -mabi=${riscv_mabi}
   -march=${riscv_march}
   -mno-relax
+  -msmall-data-limit=0
 )

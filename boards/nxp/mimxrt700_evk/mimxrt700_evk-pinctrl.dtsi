@@ -65,4 +65,40 @@
 			slew-rate = "slow";
 		};
 	};
+
+	pinmux_lpadc0: pinmux_lpadc0 {
+		group0 {
+			pinmux = <ADC0_CH0_PIO10_0>,
+				<ADC0_CH1_PIO10_2>;
+			slew-rate = "normal";
+			drive-strength = "normal";
+			nxp,analog-mode;
+		};
+	};
+
+	pinmux_sctimer: pinmux_sctimer {
+		group0 {
+			pinmux = <SCT0_IN0_PIO0_0>;
+			slew-rate = "normal";
+			drive-strength = "normal";
+			input-enable;
+		};
+	};
+
+	pinmux_i3c3: pinmux_i3c3 {
+		group0 {
+			pinmux = <I3C3_SDA_PIO8_21>,
+				<I3C3_SCL_PIO8_22>;
+			slew-rate = "normal";
+			drive-strength = "normal";
+			input-enable;
+			bias-pull-up;
+		};
+		group1 {
+			pinmux = <I3C3_PUR_PIO8_20>;
+			slew-rate = "normal";
+			drive-strength = "normal";
+			input-enable;
+		};
+	};
 };

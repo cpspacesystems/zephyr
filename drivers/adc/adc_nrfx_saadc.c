@@ -9,7 +9,10 @@
 #include <haly/nrfy_saadc.h>
 #include <zephyr/dt-bindings/adc/nrf-saadc-v3.h>
 #include <zephyr/dt-bindings/adc/nrf-saadc-nrf54l.h>
+#include <zephyr/dt-bindings/adc/nrf-saadc-haltium.h>
 #include <zephyr/linker/devicetree_regions.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/device_runtime.h>
 
 #define LOG_LEVEL CONFIG_ADC_LOG_LEVEL
 #include <zephyr/logging/log.h>
@@ -21,7 +24,7 @@ LOG_MODULE_REGISTER(adc_nrfx_saadc);
 #if (NRF_SAADC_HAS_AIN_AS_PIN)
 
 #if defined(CONFIG_NRF_PLATFORM_HALTIUM)
-static const uint8_t saadc_psels[NRF_SAADC_AIN7 + 1] = {
+static const uint32_t saadc_psels[NRF_SAADC_AIN13 + 1] = {
 	[NRF_SAADC_AIN0] = NRF_PIN_PORT_TO_PIN_NUMBER(0U, 1),
 	[NRF_SAADC_AIN1] = NRF_PIN_PORT_TO_PIN_NUMBER(1U, 1),
 	[NRF_SAADC_AIN2] = NRF_PIN_PORT_TO_PIN_NUMBER(2U, 1),
@@ -30,6 +33,12 @@ static const uint8_t saadc_psels[NRF_SAADC_AIN7 + 1] = {
 	[NRF_SAADC_AIN5] = NRF_PIN_PORT_TO_PIN_NUMBER(5U, 1),
 	[NRF_SAADC_AIN6] = NRF_PIN_PORT_TO_PIN_NUMBER(6U, 1),
 	[NRF_SAADC_AIN7] = NRF_PIN_PORT_TO_PIN_NUMBER(7U, 1),
+	[NRF_SAADC_AIN8] = NRF_PIN_PORT_TO_PIN_NUMBER(0U, 9),
+	[NRF_SAADC_AIN9] = NRF_PIN_PORT_TO_PIN_NUMBER(1U, 9),
+	[NRF_SAADC_AIN10] = NRF_PIN_PORT_TO_PIN_NUMBER(2U, 9),
+	[NRF_SAADC_AIN11] = NRF_PIN_PORT_TO_PIN_NUMBER(3U, 9),
+	[NRF_SAADC_AIN12] = NRF_PIN_PORT_TO_PIN_NUMBER(4U, 9),
+	[NRF_SAADC_AIN13] = NRF_PIN_PORT_TO_PIN_NUMBER(5U, 9),
 };
 #elif defined(CONFIG_SOC_NRF54L05) || defined(CONFIG_SOC_NRF54L10) || defined(CONFIG_SOC_NRF54L15)
 static const uint32_t saadc_psels[NRF_SAADC_DVDD + 1] = {
@@ -41,6 +50,20 @@ static const uint32_t saadc_psels[NRF_SAADC_DVDD + 1] = {
 	[NRF_SAADC_AIN5] = NRF_PIN_PORT_TO_PIN_NUMBER(12U, 1),
 	[NRF_SAADC_AIN6] = NRF_PIN_PORT_TO_PIN_NUMBER(13U, 1),
 	[NRF_SAADC_AIN7] = NRF_PIN_PORT_TO_PIN_NUMBER(14U, 1),
+	[NRF_SAADC_VDD]  = NRF_SAADC_INPUT_VDD,
+	[NRF_SAADC_AVDD] = NRF_SAADC_INPUT_AVDD,
+	[NRF_SAADC_DVDD] = NRF_SAADC_INPUT_DVDD,
+};
+#elif defined(CONFIG_SOC_COMPATIBLE_NRF54LX)
+static const uint32_t saadc_psels[NRF_SAADC_DVDD + 1] = {
+	[NRF_SAADC_AIN0] = NRF_PIN_PORT_TO_PIN_NUMBER(0U, 1),
+	[NRF_SAADC_AIN1] = NRF_PIN_PORT_TO_PIN_NUMBER(31U, 1),
+	[NRF_SAADC_AIN2] = NRF_PIN_PORT_TO_PIN_NUMBER(30U, 1),
+	[NRF_SAADC_AIN3] = NRF_PIN_PORT_TO_PIN_NUMBER(29U, 1),
+	[NRF_SAADC_AIN4] = NRF_PIN_PORT_TO_PIN_NUMBER(6U, 1),
+	[NRF_SAADC_AIN5] = NRF_PIN_PORT_TO_PIN_NUMBER(5U, 1),
+	[NRF_SAADC_AIN6] = NRF_PIN_PORT_TO_PIN_NUMBER(4U, 1),
+	[NRF_SAADC_AIN7] = NRF_PIN_PORT_TO_PIN_NUMBER(3U, 1),
 	[NRF_SAADC_VDD]  = NRF_SAADC_INPUT_VDD,
 	[NRF_SAADC_AVDD] = NRF_SAADC_INPUT_AVDD,
 	[NRF_SAADC_DVDD] = NRF_SAADC_INPUT_DVDD,
@@ -168,6 +191,26 @@ static int adc_convert_acq_time(uint16_t acquisition_time, nrf_saadc_acqtime_t *
 	return result;
 }
 
+static int saadc_pm_hook(const struct device *dev, enum pm_device_action action)
+{
+	ARG_UNUSED(dev);
+
+	switch (action) {
+	case PM_DEVICE_ACTION_SUSPEND:
+		nrf_saadc_disable(NRF_SAADC);
+		return 0;
+
+	case PM_DEVICE_ACTION_RESUME:
+		nrf_saadc_enable(NRF_SAADC);
+		return 0;
+
+	default:
+		break;
+	}
+
+	return -ENOTSUP;
+}
+
 /* Implementation of the ADC driver API function: adc_channel_setup. */
 static int adc_nrfx_channel_setup(const struct device *dev,
 				  const struct adc_channel_cfg *channel_cfg)
@@ -289,8 +332,13 @@ static int adc_nrfx_channel_setup(const struct device *dev,
 	}
 
 	if (config.mode == NRF_SAADC_MODE_DIFFERENTIAL) {
+#if defined(CONFIG_NRF_PLATFORM_HALTIUM)
+		if ((input_negative > NRF_SAADC_AIN7) !=
+		    (channel_cfg->input_positive > NRF_SAADC_AIN7)) {
+#else
 		if (input_negative > NRF_SAADC_AIN7 ||
 		    input_negative < NRF_SAADC_AIN0) {
+#endif
 			return -EINVAL;
 		}
 
@@ -320,7 +368,11 @@ static int adc_nrfx_channel_setup(const struct device *dev,
 
 static void adc_context_start_sampling(struct adc_context *ctx)
 {
+#if defined(CONFIG_PM_DEVICE_RUNTIME)
+	pm_device_runtime_get(DEVICE_DT_INST_GET(0));
+#else
 	nrf_saadc_enable(NRF_SAADC);
+#endif
 
 	if (ctx->sequence.calibrate) {
 		nrf_saadc_task_trigger(NRF_SAADC,
@@ -623,7 +675,12 @@ static void saadc_irq_handler(const struct device *dev)
 		nrf_saadc_event_clear(NRF_SAADC, NRF_SAADC_EVENT_END);
 
 		nrf_saadc_task_trigger(NRF_SAADC, NRF_SAADC_TASK_STOP);
+
+#if defined(CONFIG_PM_DEVICE_RUNTIME)
+		pm_device_runtime_put(DEVICE_DT_INST_GET(0));
+#else
 		nrf_saadc_disable(NRF_SAADC);
+#endif
 
 		if (has_single_ended(&m_data.ctx.sequence)) {
 			correct_single_ended(&m_data.ctx.sequence);
@@ -663,7 +720,7 @@ static int init_saadc(const struct device *dev)
 
 	adc_context_unlock_unconditionally(&m_data.ctx);
 
-	return 0;
+	return pm_device_driver_init(dev, saadc_pm_hook);
 }
 
 static DEVICE_API(adc, adc_nrfx_driver_api) = {
@@ -672,7 +729,7 @@ static DEVICE_API(adc, adc_nrfx_driver_api) = {
 #ifdef CONFIG_ADC_ASYNC
 	.read_async    = adc_nrfx_read_async,
 #endif
-#if defined(CONFIG_SOC_NRF54L05) || defined(CONFIG_SOC_NRF54L10) ||  defined(CONFIG_SOC_NRF54L15)
+#if defined(CONFIG_SOC_COMPATIBLE_NRF54LX)
 	.ref_internal  = 900,
 #elif defined(CONFIG_NRF_PLATFORM_HALTIUM)
 	.ref_internal  = 1024,
@@ -680,6 +737,27 @@ static DEVICE_API(adc, adc_nrfx_driver_api) = {
 	.ref_internal  = 600,
 #endif
 };
+
+#if defined(CONFIG_NRF_PLATFORM_HALTIUM)
+/* AIN8-AIN14 inputs are on 3v3 GPIO port and they cannot be mixed with other
+ * analog inputs (from 1v8 ports) in differential mode.
+ */
+#define CH_IS_3V3(val) (val >= NRF_SAADC_AIN8)
+
+#define MIXED_3V3_1V8_INPUTS(node)					\
+	(DT_NODE_HAS_PROP(node, zephyr_input_negative) &&		\
+	 (CH_IS_3V3(DT_PROP_OR(node, zephyr_input_negative, 0)) !=	\
+	  CH_IS_3V3(DT_PROP_OR(node, zephyr_input_positive, 0))))
+#else
+#define MIXED_3V3_1V8_INPUTS(node) false
+#endif
+
+#define VALIDATE_CHANNEL_CONFIG(node)					\
+	BUILD_ASSERT(MIXED_3V3_1V8_INPUTS(node) == false,		\
+		     "1v8 inputs cannot be mixed with 3v3 inputs");
+
+/* Validate configuration of all channels. */
+#define VALIDATE_CHANNELS_CONFIG(inst) DT_FOREACH_CHILD(DT_DRV_INST(inst), VALIDATE_CHANNEL_CONFIG)
 
 /*
  * There is only one instance on supported SoCs, so inst is guaranteed
@@ -693,9 +771,11 @@ static DEVICE_API(adc, adc_nrfx_driver_api) = {
 #define SAADC_INIT(inst)						\
 	BUILD_ASSERT((inst) == 0,					\
 		     "multiple instances not supported");		\
+	VALIDATE_CHANNELS_CONFIG(inst)					\
+	PM_DEVICE_DT_INST_DEFINE(0, saadc_pm_hook, 1);			\
 	DEVICE_DT_INST_DEFINE(0,					\
 			    init_saadc,					\
-			    NULL,					\
+			    PM_DEVICE_DT_INST_GET(0),			\
 			    NULL,					\
 			    NULL,					\
 			    POST_KERNEL,				\

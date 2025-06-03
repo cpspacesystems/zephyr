@@ -99,6 +99,19 @@ static const nrf_gpio_pin_drive_t drive_modes[NRF_DRIVE_COUNT] = {
 #define NRF_PSEL_TWIS(reg, line) ((NRF_TWIS_Type *)reg)->PSEL.line
 #endif
 
+#if DT_HAS_COMPAT_STATUS_OKAY(nordic_nrf_grtc) || defined(CONFIG_NRFX_GRTC)
+#if DT_NODE_HAS_PROP(DT_NODELABEL(grtc), clkout_fast_frequency_hz)
+#define NRF_GRTC_CLKOUT_FAST 1
+#endif
+#if DT_NODE_HAS_PROP(DT_NODELABEL(grtc), clkout_32k)
+#define NRF_GRTC_CLKOUT_SLOW 1
+#endif
+#endif
+
+#if DT_HAS_COMPAT_STATUS_OKAY(nordic_nrf_tdm)
+#define NRF_PSEL_TDM(reg, line) ((NRF_TDM_Type *)reg)->PSEL.line
+#endif
+
 int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt,
 			   uintptr_t reg)
 {
@@ -345,6 +358,65 @@ int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt,
 			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
 			break;
 #endif /* defined(NRF_PSEL_QSPI) */
+#if defined(NRF_PSEL_TDM)
+		case NRF_FUN_TDM_SCK_M:
+			NRF_PSEL_TDM(reg, SCK) = psel;
+			write = 0U;
+			dir = NRF_GPIO_PIN_DIR_OUTPUT;
+			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
+			break;
+		case NRF_FUN_TDM_SCK_S:
+			NRF_PSEL_TDM(reg, SCK) = psel;
+			dir = NRF_GPIO_PIN_DIR_INPUT;
+			input = NRF_GPIO_PIN_INPUT_CONNECT;
+			break;
+		case NRF_FUN_TDM_FSYNC_M:
+			NRF_PSEL_TDM(reg, FSYNC) = psel;
+			write = 0U;
+			dir = NRF_GPIO_PIN_DIR_OUTPUT;
+			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
+			break;
+		case NRF_FUN_TDM_FSYNC_S:
+			NRF_PSEL_TDM(reg, FSYNC) = psel;
+			dir = NRF_GPIO_PIN_DIR_INPUT;
+			input = NRF_GPIO_PIN_INPUT_CONNECT;
+			break;
+		case NRF_FUN_TDM_SDIN:
+			NRF_PSEL_TDM(reg, SDIN) = psel;
+			dir = NRF_GPIO_PIN_DIR_INPUT;
+			input = NRF_GPIO_PIN_INPUT_CONNECT;
+			break;
+		case NRF_FUN_TDM_SDOUT:
+			NRF_PSEL_TDM(reg, SDOUT) = psel;
+			write = 0U;
+			dir = NRF_GPIO_PIN_DIR_OUTPUT;
+			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
+			break;
+		case NRF_FUN_TDM_MCK:
+			NRF_PSEL_TDM(reg, MCK) = psel;
+			write = 0U;
+			dir = NRF_GPIO_PIN_DIR_OUTPUT;
+			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
+			break;
+#endif /* defined(NRF_PSEL_TDM) */
+#if defined(NRF_GRTC_CLKOUT_FAST)
+		case NRF_FUN_GRTC_CLKOUT_FAST:
+#if NRF_GPIO_HAS_SEL && defined(GPIO_PIN_CNF_CTRLSEL_GRTC)
+			nrf_gpio_pin_control_select(psel, NRF_GPIO_PIN_SEL_GRTC);
+#endif
+			dir = NRF_GPIO_PIN_DIR_OUTPUT;
+			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
+			break;
+#endif /* defined(NRF_GRTC_CLKOUT_FAST) */
+#if defined(NRF_GRTC_CLKOUT_SLOW)
+		case NRF_FUN_GRTC_CLKOUT_32K:
+#if NRF_GPIO_HAS_SEL && defined(GPIO_PIN_CNF_CTRLSEL_GRTC)
+			nrf_gpio_pin_control_select(psel, NRF_GPIO_PIN_SEL_GRTC);
+#endif
+			dir = NRF_GPIO_PIN_DIR_OUTPUT;
+			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
+			break;
+#endif /* defined(NRF_GRTC_CLKOUT_SLOW) */
 #if DT_HAS_COMPAT_STATUS_OKAY(nordic_nrf_can)
 		/* Pin routing is controlled by secure domain, via UICR */
 		case NRF_FUN_CAN_TX:
@@ -356,6 +428,24 @@ int pinctrl_configure_pins(const pinctrl_soc_pin_t *pins, uint8_t pin_cnt,
 			input = NRF_GPIO_PIN_INPUT_CONNECT;
 			break;
 #endif /* DT_HAS_COMPAT_STATUS_OKAY(nordic_nrf_can) */
+#if DT_HAS_COMPAT_STATUS_OKAY(nordic_nrf_exmif)
+		/* Pin routing is controlled by secure domain, via UICR */
+		case NRF_FUN_EXMIF_CK:
+		case NRF_FUN_EXMIF_DQ0:
+		case NRF_FUN_EXMIF_DQ1:
+		case NRF_FUN_EXMIF_DQ2:
+		case NRF_FUN_EXMIF_DQ3:
+		case NRF_FUN_EXMIF_DQ4:
+		case NRF_FUN_EXMIF_DQ5:
+		case NRF_FUN_EXMIF_DQ6:
+		case NRF_FUN_EXMIF_DQ7:
+		case NRF_FUN_EXMIF_CS0:
+		case NRF_FUN_EXMIF_CS1:
+		case NRF_FUN_EXMIF_RWDS:
+			dir = NRF_GPIO_PIN_DIR_INPUT;
+			input = NRF_GPIO_PIN_INPUT_DISCONNECT;
+			break;
+#endif /* DT_HAS_COMPAT_STATUS_OKAY(nordic_nrf_exmif) */
 #if defined(NRF_PSEL_TWIS)
 		case NRF_FUN_TWIS_SCL:
 			NRF_PSEL_TWIS(reg, SCL) = psel;

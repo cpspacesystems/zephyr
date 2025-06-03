@@ -138,6 +138,31 @@ void pm_policy_state_lock_put(enum pm_state state, uint8_t substate_id);
 bool pm_policy_state_lock_is_active(enum pm_state state, uint8_t substate_id);
 
 /**
+ * @brief Check if a power state is available.
+ *
+ * It is unavailable if locked or latency requirement cannot be fulfilled in that state.
+ *
+ * @param state Power state.
+ * @param substate_id Power substate ID. Use PM_ALL_SUBSTATES to affect all the
+ *		      substates in the given power state.
+ *
+ * @retval true if power state is active.
+ * @retval false if power state is not active.
+ */
+bool pm_policy_state_is_available(enum pm_state state, uint8_t substate_id);
+
+/**
+ * @brief Check if any power state can be used.
+ *
+ * Function allows to quickly check if any power state is available and exit
+ * suspend operation early.
+ *
+ * @retval true if any power state is active.
+ * @retval false if all power states are unavailable.
+ */
+bool pm_policy_state_any_active(void);
+
+/**
  * @brief Register an event.
  *
  * Events in the power-management policy context are defined as any source that
@@ -204,6 +229,21 @@ void pm_policy_device_power_lock_get(const struct device *dev);
  * @see pm_policy_state_lock_put()
  */
 void pm_policy_device_power_lock_put(const struct device *dev);
+
+/**
+ * @brief Check if a state will disable a device
+ *
+ * This function allows client code to check if a state will disable a device.
+ *
+ * @param dev Device reference.
+ * @param state The state to check on whether it disables the device.
+ * @param substate_id The substate to check on whether it disables the device.
+ *
+ * @retval true if the state disables the device
+ * @retval false if the state does not disable the device
+ */
+bool pm_policy_device_is_disabling_state(const struct device *dev,
+					 enum pm_state state, uint8_t substate_id);
 
 /**
  * @brief Returns the ticks until the next event

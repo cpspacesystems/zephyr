@@ -243,6 +243,7 @@
 			reg = <0x41016000 0x1000>;
 			cc-num = <4>;
 			interrupts = <22 NRF_DEFAULT_IRQ_PRIORITY>;
+			clock-frequency = <32768>;
 			status = "disabled";
 		};
 
@@ -347,14 +348,12 @@
 	/* Default IPC description */
 	ipc {
 		ipc0: ipc0 {
-			compatible = "zephyr,ipc-icbmsg";
-			status = "okay";
+			compatible = "zephyr,ipc-openamp-static-vrings";
+			memory-region = <&sram0_shared>;
 			mboxes = <&mbox 0>, <&mbox 1>;
 			mbox-names = "rx", "tx";
-			tx-region = <&cpunet_cpuapp_ipc_shm>;
-			rx-region = <&cpuapp_cpunet_ipc_shm>;
-			tx-blocks = <32>;
-			rx-blocks = <32>;
+			role = "remote";
+			status = "okay";
 		};
 	};
 };

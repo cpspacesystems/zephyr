@@ -41,13 +41,13 @@ manifest:
       groups:
         - optional
     - name: tf-m-tests
-      revision: 502ea90105ee18f20c78f710e2ba2ded0fc0756e
+      revision: c712761dd5391bf3f38033643d28a736cae89a19
       path: modules/tee/tf-m/tf-m-tests
       remote: upstream
       groups:
         - optional
     - name: tflite-micro
-      revision: 48613f7ba1ffbda46ad771a77a35408f48f922e9
+      revision: 8d404de73acf7687831e16d88e86e4f73cfddf8e
       path: optional/modules/lib/tflite-micro
       repo-path: tflite-micro
       remote: upstream
@@ -60,14 +60,14 @@ manifest:
       groups:
         - optional
     - name: zephyr-lang-rust
-      revision: cf3dc6cb79631717464f1cd6b3fb122220f12915
+      revision: 1cab77b436bccf2c84678e8825b586a093da0918
       path: modules/lang/rust
       remote: upstream
       groups:
         - optional
     - name: zscilib
       path: modules/lib/zscilib
-      revision: ee1b287d9dd07208d2cc52284240ac25bb66eae3
+      revision: ee3c0c405087e331aad16d167b6e4ec1c3452ba9
       remote: upstream
       groups:
         - optional

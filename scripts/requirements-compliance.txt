@@ -5,12 +5,12 @@
 clang-format>=15.0.0
 gitlint
 junitparser>=2
-lxml
+lxml>=5.3.0
 pykwalify
 pylint>=3
-python-magic
 python-magic-bin; sys_platform == "win32"
-ruff==0.8.1
+python-magic; sys_platform != "win32"
+ruff==0.11.11
 sphinx-lint
 unidiff
 yamllint

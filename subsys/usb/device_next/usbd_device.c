@@ -89,8 +89,10 @@ int usbd_device_set_vid(struct usbd_context *const uds_ctx,
 	fs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_FS);
 	fs_desc->idVendor = sys_cpu_to_le16(vid);
 
-	hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
-	hs_desc->idVendor = sys_cpu_to_le16(vid);
+	if (USBD_SUPPORTS_HIGH_SPEED) {
+		hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
+		hs_desc->idVendor = sys_cpu_to_le16(vid);
+	}
 
 set_vid_exit:
 	usbd_device_unlock(uds_ctx);
@@ -113,8 +115,10 @@ int usbd_device_set_pid(struct usbd_context *const uds_ctx,
 	fs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_FS);
 	fs_desc->idProduct = sys_cpu_to_le16(pid);
 
-	hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
-	hs_desc->idProduct = sys_cpu_to_le16(pid);
+	if (USBD_SUPPORTS_HIGH_SPEED) {
+		hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
+		hs_desc->idProduct = sys_cpu_to_le16(pid);
+	}
 
 set_pid_exit:
 	usbd_device_unlock(uds_ctx);
@@ -137,8 +141,10 @@ int usbd_device_set_bcd_device(struct usbd_context *const uds_ctx,
 	fs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_FS);
 	fs_desc->bcdDevice = sys_cpu_to_le16(bcd);
 
-	hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
-	hs_desc->bcdDevice = sys_cpu_to_le16(bcd);
+	if (USBD_SUPPORTS_HIGH_SPEED) {
+		hs_desc = get_device_descriptor(uds_ctx, USBD_SPEED_HS);
+		hs_desc->bcdDevice = sys_cpu_to_le16(bcd);
+	}
 
 set_bcd_device_exit:
 	usbd_device_unlock(uds_ctx);
@@ -195,6 +201,13 @@ wakeup_request_error:
 	usbd_device_unlock(uds_ctx);
 
 	return ret;
+}
+
+void usbd_self_powered(struct usbd_context *uds_ctx, const bool status)
+{
+	usbd_device_lock(uds_ctx);
+	uds_ctx->status.self_powered = status;
+	usbd_device_unlock(uds_ctx);
 }
 
 bool usbd_is_suspended(struct usbd_context *uds_ctx)
@@ -356,6 +369,10 @@ int usbd_device_register_vreq(struct usbd_context *const uds_ctx,
 			      struct usbd_vreq_node *const vreq_nd)
 {
 	int ret = 0;
+
+	if (!IS_ENABLED(CONFIG_USBD_VREQ_SUPPORT)) {
+		return -ENOTSUP;
+	}
 
 	usbd_device_lock(uds_ctx);
 

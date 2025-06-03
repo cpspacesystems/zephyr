@@ -95,7 +95,6 @@
 		};
 
 		adc@40170000 {
-			channel-count = <11>;
 			channel-available-mask = <0x31ff>;
 		};
 
@@ -194,6 +193,7 @@
 
 			iclk: iclk {
 				compatible = "renesas,ra-cgc-pclk";
+				clock-frequency = <200000000>;
 				div = <1>;
 				#clock-cells = <2>;
 				status = "okay";

@@ -253,12 +253,33 @@ To enable this mode, set the following option when invoking cmake::
 
    -DDT_TURBO_MODE=1
 
-or invoke make with the following target::
+Another step that typically takes a long time is the generation of the list of
+supported features for each board. This can be disabled by setting the following
+option when invoking cmake::
+
+   -DHW_FEATURES_TURBO_MODE=1
+
+Invoking :command:`make` with the following target will build the documentation
+without either of the aforementioned features::
 
    cd ~/zephyrproject/zephyr/doc
 
-   # To generate HTML output without detailed Kconfig
+   # To generate HTML output without detailed Devicetree bindings documentation
+   # and supported features index
    make html-fast
+
+When working with documentation for boards from a specific vendor, it is also
+possible to limit generation of the list of supported features to subset of board
+vendors. This can be done by setting the following option when invoking cmake::
+
+   -DHW_FEATURES_VENDOR_FILTER=vendor1,vendor2
+
+This option can also be used with the :command:`make` wrapper::
+
+   cd ~/zephyrproject/zephyr/doc
+
+   # To generate HTML output with supported features limited to a subset of vendors
+   make html HW_FEATURES_VENDOR_FILTER=vendor1,vendor2
 
 Viewing generated documentation locally
 ***************************************

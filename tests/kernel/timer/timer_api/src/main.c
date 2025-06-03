@@ -28,7 +28,7 @@ struct timer_data {
  */
 #define INEXACT_MS_CONVERT ((CONFIG_SYS_CLOCK_TICKS_PER_SEC % MSEC_PER_SEC) != 0)
 
-#if CONFIG_NRF_RTC_TIMER
+#if CONFIG_NRF_RTC_TIMER || CONFIG_NRF_GRTC_TIMER
 /* On Nordic SOCs one or both of the tick and busy-wait clocks may
  * derive from sources that have slews that sum to +/- 13%.
  */
@@ -749,16 +749,22 @@ ZTEST_USER(timer_api, test_timeout_abs)
 	k_timeout_t t = K_TIMEOUT_ABS_TICKS(exp_ticks), t2;
 	uint64_t t0, t1;
 
+	/* Ensure second alignment for K_TIMEOUT_ABS_SEC */
+	zassert_true(exp_ms % MSEC_PER_SEC == 0);
+
 	/* Check the other generator macros to make sure they produce
 	 * the same (whiteboxed) converted values
 	 */
+	t2 = K_TIMEOUT_ABS_SEC(exp_ms / MSEC_PER_SEC);
+	zassert_true(t2.ticks == t.ticks);
+
 	t2 = K_TIMEOUT_ABS_MS(exp_ms);
 	zassert_true(t2.ticks == t.ticks);
 
-	t2 = K_TIMEOUT_ABS_US(1000 * exp_ms);
+	t2 = K_TIMEOUT_ABS_US(USEC_PER_MSEC * exp_ms);
 	zassert_true(t2.ticks == t.ticks);
 
-	t2 = K_TIMEOUT_ABS_NS(1000 * 1000 * exp_ms);
+	t2 = K_TIMEOUT_ABS_NS(NSEC_PER_MSEC * exp_ms);
 	zassert_true(t2.ticks == t.ticks);
 
 	t2 = K_TIMEOUT_ABS_CYC(k_ms_to_cyc_ceil64(exp_ms));
@@ -785,7 +791,7 @@ ZTEST_USER(timer_api, test_timeout_abs)
 	} while (t0 != t1);
 
 	zassert_true(t0 + rem_ticks == exp_ticks,
-		     "Wrong remaining: now %lld rem %lld expires %lld (%d)",
+		     "Wrong remaining: now %lld rem %lld expires %lld (%lld)",
 		     (uint64_t)t0, (uint64_t)rem_ticks, (uint64_t)exp_ticks,
 		     t0+rem_ticks-exp_ticks);
 

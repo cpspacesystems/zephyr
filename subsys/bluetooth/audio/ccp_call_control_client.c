@@ -6,6 +6,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -189,7 +190,7 @@ int bt_ccp_call_control_client_discover(struct bt_conn *conn,
 		atomic_clear_bit(client->flags, CCP_CALL_CONTROL_CLIENT_FLAG_BUSY);
 
 		/* Return known errors */
-		if (err == -EBUSY) {
+		if (err == -EBUSY || err == -ENOTCONN) {
 			return err;
 		}
 
@@ -229,6 +230,25 @@ int bt_ccp_call_control_client_unregister_cb(struct bt_ccp_call_control_client_c
 	if (!sys_slist_find_and_remove(&ccp_call_control_client_cbs, &cb->_node)) {
 		return -EALREADY;
 	}
+
+	return 0;
+}
+
+int bt_ccp_call_control_client_get_bearers(struct bt_ccp_call_control_client *client,
+					   struct bt_ccp_call_control_client_bearers *bearers)
+{
+	CHECKIF(client == NULL) {
+		LOG_DBG("client is NULL");
+		return -EINVAL;
+	}
+
+	CHECKIF(bearers == NULL) {
+		LOG_DBG("bearers is NULL");
+		return -EINVAL;
+	}
+
+	memset(bearers, 0, sizeof(*bearers));
+	populate_bearers(client, bearers);
 
 	return 0;
 }

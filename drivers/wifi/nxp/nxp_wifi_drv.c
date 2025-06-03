@@ -284,12 +284,6 @@ int nxp_wifi_wlan_event_callback(enum wlan_event_reason reason, void *data)
 		s_nxp_wifi_UapActivated = true;
 		break;
 	case WLAN_REASON_UAP_CLIENT_ASSOC:
-		LOG_DBG("WLAN: UAP a Client Associated");
-		LOG_DBG("Client => ");
-		print_mac((const char *)data);
-		LOG_DBG("Associated with Soft AP");
-		break;
-	case WLAN_REASON_UAP_CLIENT_CONN:
 		wlan_get_current_uap_network(&nxp_wlan_uap_network);
 #ifdef CONFIG_NXP_WIFI_11AX
 		if (nxp_wlan_uap_network.dot11ax) {
@@ -312,6 +306,12 @@ int nxp_wifi_wlan_event_callback(enum wlan_event_reason reason, void *data)
 		ap_sta_info.twt_capable = status.twt_capable;
 
 		wifi_mgmt_raise_ap_sta_connected_event(g_uap.netif, &ap_sta_info);
+		LOG_DBG("WLAN: UAP a Client Associated");
+		LOG_DBG("Client => ");
+		print_mac((const char *)data);
+		LOG_DBG("Associated with Soft AP");
+		break;
+	case WLAN_REASON_UAP_CLIENT_CONN:
 		LOG_DBG("WLAN: UAP a Client Connected");
 		LOG_DBG("Client => ");
 		print_mac((const char *)data);
@@ -716,7 +716,7 @@ static int nxp_wifi_process_results(unsigned int count)
 		res.security = WIFI_SECURITY_TYPE_NONE;
 
 		if (scan_result.wpa2_entp) {
-			res.security = WIFI_SECURITY_TYPE_EAP_TLS;
+			res.security = WIFI_SECURITY_TYPE_EAP;
 		}
 		if (scan_result.wpa2) {
 			res.security = WIFI_SECURITY_TYPE_PSK;
@@ -730,13 +730,13 @@ static int nxp_wifi_process_results(unsigned int count)
 
 		if (scan_result.wpa3_entp) {
 			res.wpa3_ent_type = WIFI_WPA3_ENTERPRISE_ONLY;
-			res.security = WIFI_SECURITY_TYPE_EAP_TLS;
+			res.security = WIFI_SECURITY_TYPE_EAP;
 		} else if (scan_result.wpa3_1x_sha256) {
 			res.wpa3_ent_type = WIFI_WPA3_ENTERPRISE_SUITEB;
-			res.security = WIFI_SECURITY_TYPE_EAP_TLS;
+			res.security = WIFI_SECURITY_TYPE_EAP;
 		} else if (scan_result.wpa3_1x_sha384) {
 			res.wpa3_ent_type = WIFI_WPA3_ENTERPRISE_SUITEB_192;
-			res.security = WIFI_SECURITY_TYPE_EAP_TLS;
+			res.security = WIFI_SECURITY_TYPE_EAP;
 		}
 
 		if (scan_result.ap_mfpr) {
@@ -1033,6 +1033,25 @@ static int nxp_wifi_disconnect(const struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_NXP_WIFI_SOFTAP_SUPPORT
+static int nxp_wifi_uap_disconnect_sta(const struct device *dev, const uint8_t *mac)
+{
+	int ret;
+
+	if (!is_uap_started()) {
+		LOG_ERR("Please start uap first!");
+		return -EAGAIN;
+	}
+
+	ret = wlan_uap_disconnect_sta((uint8_t *)mac);
+	if (ret != WM_SUCCESS) {
+		LOG_ERR("Failed to disconnect STA");
+	}
+
+	return ret;
+}
+#endif
+
 static inline enum wifi_security_type nxp_wifi_key_mgmt_to_zephyr(int key_mgmt, int pwe)
 {
 	switch (key_mgmt) {
@@ -1042,6 +1061,8 @@ static inline enum wifi_security_type nxp_wifi_key_mgmt_to_zephyr(int key_mgmt, 
 		return WIFI_SECURITY_TYPE_PSK;
 	case WLAN_KEY_MGMT_PSK_SHA256:
 		return WIFI_SECURITY_TYPE_PSK_SHA256;
+	case WLAN_KEY_MGMT_PSK | WLAN_KEY_MGMT_PSK_SHA256:
+		return WIFI_SECURITY_TYPE_PSK;
 	case WLAN_KEY_MGMT_SAE:
 		if (pwe == 1) {
 			return WIFI_SECURITY_TYPE_SAE_H2E;
@@ -1167,6 +1188,7 @@ static int nxp_wifi_status(const struct device *dev, struct wifi_iface_status *s
 	} else if (connection_state == WLAN_AUTHENTICATED
 			|| connection_state == WLAN_CONNECTED) {
 		status->state = WIFI_STATE_COMPLETED;
+		wlan_ds_rate ds_rate = {0};
 
 		if (!wlan_get_current_network(&nxp_wlan_network)) {
 			strncpy(status->ssid, nxp_wlan_network.ssid, WIFI_SSID_MAX_LEN - 1);
@@ -1216,6 +1238,22 @@ static int nxp_wifi_status(const struct device *dev, struct wifi_iface_status *s
 			status->mfp = nxp_wlan_network.security.mfpr ? WIFI_MFP_REQUIRED :
 				(nxp_wlan_network.security.mfpc ? WIFI_MFP_OPTIONAL : 0);
 		}
+		ds_rate.sub_command = WIFI_DS_GET_DATA_RATE;
+		if (!wlan_get_data_rate(&ds_rate, WLAN_BSS_TYPE_STA)) {
+			wifi_data_rate_t *datarate = (wifi_data_rate_t *)&ds_rate.param.data_rate;
+			int lg_rate[12] = {1, 2, 5, 11, 6, 9, 12, 18, 24, 36, 48, 54};
+
+			if (datarate->tx_rate_format == MLAN_RATE_FORMAT_LG &&
+			    datarate->tx_data_rate < 12) {
+				/* Legacy rates (in bps) */
+				/* Need to feed Zephyr L2 Wi-Fi with rate value in unit of Mbps*/
+				status->current_phy_tx_rate = lg_rate[datarate->tx_data_rate];
+			} else if (datarate->tx_rate_format <= 3) {
+				/* HT, VHT, HE rates (in bps) */
+				/* Need to feed Zephyr L2 Wi-Fi with rate value in unit of Mbps*/
+				status->current_phy_tx_rate = (datarate->tx_data_rate >> 1);
+			}
+		}
 	}
 
 	return 0;
@@ -1260,6 +1298,10 @@ static int nxp_wifi_stats(const struct device *dev, struct net_stats_wifi *stats
 	stats->unicast.rx = if_handle->stats.unicast.rx;
 	stats->unicast.tx = if_handle->stats.unicast.tx;
 	stats->overrun_count = if_handle->stats.errors.rx + if_handle->stats.errors.tx;
+
+	if (!net_if_is_admin_up(net_if_lookup_by_dev(dev))) {
+		return 0;
+	}
 
 #ifdef CONFIG_NXP_WIFI_GET_LOG
 	wifi_stats = k_malloc(sizeof(wlan_pkt_stats_t));
@@ -1308,6 +1350,10 @@ int nxp_wifi_reset_stats(const struct device *dev)
 
 	/* clear local statistics */
 	memset(&if_handle->stats, 0, sizeof(if_handle->stats));
+
+	if (!net_if_is_admin_up(net_if_lookup_by_dev(dev))) {
+		return 0;
+	}
 
 #ifdef CONFIG_NXP_WIFI_GET_LOG
 	/* store firmware statistics */
@@ -1406,6 +1452,13 @@ static int nxp_wifi_11k_neighbor_request(const struct device *dev, struct wifi_1
 	}
 
 	return 0;
+}
+#endif
+
+#ifdef CONFIG_NXP_WIFI_11V
+static int nxp_wifi_btm_query(const struct device *dev, uint8_t reason)
+{
+	return wlan_host_11v_bss_trans_query(reason);
 }
 #endif
 
@@ -1999,8 +2052,9 @@ static int device_wlan_pm_action(const struct device *dev, enum pm_device_action
 #ifdef CONFIG_NXP_WIFI_WMM_UAPSD
 		    || wlan_is_wmm_uapsd_enabled()
 #endif
-		)
+		) {
 			return -EBUSY;
+		}
 		/*
 		 * Trigger host sleep handshake here. Before handshake is done, host is not allowed
 		 * to enter low power mode
@@ -2067,6 +2121,9 @@ static const struct wifi_mgmt_ops nxp_wifi_sta_mgmt = {
 #ifdef CONFIG_NXP_WIFI_11K
 	.cfg_11k = nxp_wifi_11k_cfg,
 	.send_11k_neighbor_request = nxp_wifi_11k_neighbor_request,
+#endif
+#ifdef CONFIG_NXP_WIFI_11V
+	.btm_query = nxp_wifi_btm_query,
 #endif
 	.set_power_save = nxp_wifi_power_save,
 	.get_power_save_config = nxp_wifi_get_power_save,
@@ -2153,6 +2210,7 @@ static const struct wifi_mgmt_ops nxp_wifi_uap_mgmt = {
 #ifdef CONFIG_NXP_WIFI_11AX_TWT
 	.set_btwt = nxp_wifi_set_btwt,
 #endif
+	.ap_sta_disconnect = nxp_wifi_uap_disconnect_sta,
 	.set_rts_threshold = nxp_wifi_ap_set_rts_threshold,
 };
 
